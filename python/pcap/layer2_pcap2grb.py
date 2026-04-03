@@ -35,7 +35,7 @@ def run_tshark(cmd):
         raise RuntimeError(result.stderr.strip() or "TShark command failed")
     return result.stdout.splitlines()
 
-
+"""Need to make sure the user has installed TShark"""
 def check_tshark():
     try:
         result = subprocess.run(
@@ -50,7 +50,7 @@ def check_tshark():
         print("Error: TShark is not installed or not in PATH.")
         sys.exit(1)
 
-
+"""Generates the matrix with the pcap file"""
 def gen_layer2_matrixs(pcap, subwindow, results_dir):
     src_mac = []
     dst_mac = []
@@ -66,6 +66,7 @@ def gen_layer2_matrixs(pcap, subwindow, results_dir):
     ])
 
     packet_count = 0
+    total_packets = 0
     for line in lines:
         parts = line.split("\t")
         if len(parts) < 5:
@@ -83,25 +84,26 @@ def gen_layer2_matrixs(pcap, subwindow, results_dir):
             packet_count += 1
 
         if packet_count == subwindow:
-            matrix  = Matrix.from_coo(src_mac, dst_mac, vals, dup_op=binary.max)
+            matrix  = Matrix.from_coo(src_mac, dst_mac, vals, dup_op=binary.plus)
             generate_grb_file(matrix, results_dir)
             # clean for next matrix to create
             matrix.clear()
             src_mac.clear()
             dst_mac.clear()
             vals.clear()
+            total_packets += packet_count
             packet_count = 0
     # If just one graph or some packets left then create the matrix here
     if subwindow is sys.maxsize or packet_count != 0:
-        matrix  = Matrix.from_coo(src_mac, dst_mac, vals, dup_op=binary.max)
+        matrix  = Matrix.from_coo(src_mac, dst_mac, vals, dup_op=binary.plus)
         generate_grb_file(matrix, results_dir)
+        total_packets += packet_count
 
+    print("Total Packets In Matrix: " + str(total_packets))
 
 
 def make_tar(source_dir, output_filename):
     source_dir = Path(source_dir)
-    print (source_dir)
-    print(output_filename)
     with tarfile.open(output_filename, "w") as tar:
         tar.add(str(source_dir), arcname=source_dir.name)
 
