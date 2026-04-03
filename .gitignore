@@ -1,0 +1,112 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+*.pyo
+*.pdb
+.Python
+env/
+venv/
+ENV/
+.venv/
+venv.bak/
+pip-wheel-metadata/
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+.python-version
+.env
+.env.*
+pip-selfcheck.json
+.pytest_cache/
+.cache/
+.mypy_cache/
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+.ipynb_checkpoints
+.hypothesis/
+.ropeproject/
+
+# C / C++ build artifacts
+*.o
+*.obj
+*.lo
+*.la
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+*.exe
+*.out
+*.elf
+*.map
+*.hex
+*.bin
+
+# Linker / IDE / toolchain files
+build/
+bin/
+lib/
+Debug*/
+Release*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile.user
+*.cmake.user
+*.dir
+*.opendb
+*.ilk
+*.pdb
+*.ipch
+*.suo
+
+# Autotools and generated files
+config.log
+config.status
+config.cache
+install-sh
+*.rej
+
+# Visual Studio / Rider / JetBrains
+.vs/
+.idea/
+*.sln.docstates
+*.user
+*.userosscache
+*.suo
+*.ncb
+*.VC.db
+
+# Editor temporary files
+*~
+#*#
+.#*
+*.swp
+*.swo
+*.bak
+*.tmp
+
+# macOS / Windows
+.DS_Store
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+
+# Tags / cscope
+tags
+cscope.*
+ctags
+
+# Core dumps
+core
+*.core
+
+# Shared objects built by Python extensions
+*.so
