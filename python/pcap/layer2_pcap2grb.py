@@ -1,14 +1,21 @@
 
+"""
+Converts a PCAP file into one or more GraphBLAS .grb files representing Layer 2 
+communication patterns that stores mac address source, destination and number of frames. 
+The grb files can then be used for traffic analysis by other GraphBLAS-based tools.
+"""
+
+import sys
 import argparse
 import subprocess
-import sys
-from graphblas import Matrix, binary
-from pathlib import Path
-import tarfile
-from datetime import datetime
 import os
 import shutil
+import tarfile
+from pathlib import Path
+from datetime import datetime
+from graphblas import Matrix, binary
 
+# Global variable to keep track of graph files created
 file_count = 0
 
 def generate_results_dir(output_dir):
@@ -60,19 +67,17 @@ def gen_layer2_matrixs(pcap, subwindow, results_dir):
         "-T", "fields",
         "-e", "frame.number",
         "-e", "eth.src",
-        "-e", "eth.dst",
-        "-e", "ip.src",
-        "-e", "ip.dst"
+        "-e", "eth.dst"
     ])
 
     packet_count = 0
     total_packets = 0
     for line in lines:
         parts = line.split("\t")
-        if len(parts) < 5:
+        if len(parts) < 3:
             continue
 
-        frame_no, eth_src, eth_dst, ip_src, ip_dst = parts[:5]
+        frame_no, eth_src, eth_dst = parts[:3]
 
         if not eth_src or not eth_dst:
             continue
@@ -93,6 +98,7 @@ def gen_layer2_matrixs(pcap, subwindow, results_dir):
             vals.clear()
             total_packets += packet_count
             packet_count = 0
+
     # If just one graph or some packets left then create the matrix here
     if subwindow is sys.maxsize or packet_count != 0:
         matrix  = Matrix.from_coo(src_mac, dst_mac, vals, dup_op=binary.plus)
@@ -115,8 +121,8 @@ def remove_uncompressed_folder(folder_to_remove):
 def main():
     parser = argparse.ArgumentParser()
     # required
-    parser.add_argument("-i", "--pcap", help="Input PCAP file")
-    parser.add_argument("-o", "--output", help="GraphBlas Output Directory")
+    parser.add_argument("-i", "--pcap", required=True, help="Input PCAP file")
+    parser.add_argument("-o", "--output", required=True, help="GraphBlas Output Directory")
     # optional
     parser.add_argument("-w", "--window", type=int, default=sys.maxsize, help="number of packet in each GraphBlas Matrix")
 
@@ -140,7 +146,6 @@ def main():
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()
