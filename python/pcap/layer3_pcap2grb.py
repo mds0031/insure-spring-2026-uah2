@@ -1,9 +1,3 @@
-"""
-Converts a PCAP file into one or more GraphBLAS .grb files representing Layer 3 
-communication patterns that stores IP source, destination and number of packets. 
-The grb files can then be used for traffic analysis by other GraphBLAS-based tools.
-"""
-
 import sys
 import argparse
 import subprocess
@@ -17,17 +11,12 @@ from graphblas import Matrix, binary
 # Global variable to keep track of graph files created
 file_count = 0
 
-def generate_results_dir(output_dir):
-    output_dir_path = output_dir + "/" + datetime.now().strftime("%Y%m%d_%H%M%S")
-    os.mkdir(output_dir_path)
-    return output_dir_path
-
 
 def generate_grb_file(matrix, results_dir):
         global file_count
 
         output = matrix.ss.serialize()
-        filename = results_dir + "/" + str(file_count) + ".grb"
+        filename = results_dir + "/layer3.grb"
         with open(filename, "wb") as f:
             f.write(output)
         file_count += 1
@@ -107,17 +96,7 @@ def gen_layer3_matrixs(pcap, subwindow, results_dir):
         total_packets += packet_count
 
     print("Total Packets In Matrix: " + str(total_packets))
-
-
-def make_tar(source_dir, output_filename):
-    source_dir = Path(source_dir)
-    with tarfile.open(output_filename, "w") as tar:
-        tar.add(str(source_dir), arcname=source_dir.name)
-
-def remove_uncompressed_folder(folder_to_remove):
-    d = Path(folder_to_remove)
-    if d.exists():
-        shutil.rmtree(d) 
+ 
 
 def main():
     parser = argparse.ArgumentParser()
@@ -136,12 +115,11 @@ def main():
 
         check_tshark()
         print("Creating folder to hold output data")
-        results_dir = generate_results_dir(output_dir)
+        os.makedirs(output_dir, exist_ok=True)
+        results_dir = output_dir
         
         print(f"Retrieving IP addresses from PCAP file {pcap_file}")
         gen_layer3_matrixs(pcap_file, subwindow, results_dir)
-        make_tar(results_dir, results_dir + ".tar")
-        remove_uncompressed_folder(results_dir)
         print("Finished!")
       
     except Exception as e:
