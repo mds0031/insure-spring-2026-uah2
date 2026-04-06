@@ -8,7 +8,7 @@ Tools that read through a network capture file and generates matrixes for analys
 ### Utils
 Python scripts needed by other directories for testing and sanity checking
 ## Tests
-TODO
+Holds network capture files and outputs for testing purposes
 ## Notes
 - Layer 6 (Presentation) is excluded from this study because its values coincide with Layer 7 (Application).
 - Layer 1 (Physical) is excluded because PCAP files do not contain sufficient information to determine directionality (source vs. destination).
