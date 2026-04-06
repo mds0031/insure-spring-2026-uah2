@@ -1,9 +1,3 @@
-"""
-Converts a PCAP file into one or more GraphBLAS .grb files representing Layer 4 
-communication patterns that store IP:Port source, destination, and number of packets.
-The grb files can then be used for traffic analysis by other GraphBLAS-based tools.
-"""
-
 import sys
 import argparse
 import subprocess
@@ -14,7 +8,6 @@ from pathlib import Path
 from datetime import datetime
 from graphblas import Matrix, binary
 
-# Global variable to keep track of graph files created
 file_count = 0
 
 def generate_results_dir(output_dir):
