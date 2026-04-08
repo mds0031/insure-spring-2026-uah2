@@ -1,5 +1,9 @@
 # insure-spring-2026-uah2
 UAH Team 2 repository for INSuRE Spring 2026 – code, documentation, and analysis artifacts for Next Generation Spatial Temporal Cyber Data Products (v3)
+## Dependencies
+- python-graphblas installed
+- ILANDS pullled and installed
+- D4M pulled and installed
 ## Description
 TODO
 ## Python
@@ -12,3 +16,24 @@ Holds network capture files and outputs for testing purposes
 ## Notes
 - Layer 6 (Presentation) is excluded from this study because its values coincide with Layer 7 (Application).
 - Layer 1 (Physical) is excluded because PCAP files do not contain sufficient information to determine directionality (source vs. destination).
+
+## Run Examples
+TODO
+### Layer 7
+source ~/D4M.py/venv/bin/activate
+
+python3 ~/Desktop/insure-spring-2026-uah2/python/pcap/layer7_initial.py \
+  -i ~/Desktop/insure-spring-2026-uah2/tests/http.cap \
+  -o ~/Desktop/insure-spring-2026-uah2/tests/test_outs/layer7.grb \
+  -m ~/Desktop/insure-spring-2026-uah2/tests/test_outs/layer7_labels.tsv
+
+### Layer 5
+TODO
+
+### Layer 4
+TODO
+
+### Layer 3
+TODO
+
+### Layer 2
