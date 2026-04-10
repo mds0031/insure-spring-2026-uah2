@@ -31,8 +31,8 @@ python3 layer7_initial.py \
 ```
 python3 layer5_initial.py \
   -i ../../tests/http.cap \
-  -o ../../test_outs/layer7.grb \
-  -m ../../tests/test_outs/layer7_labels.tsv
+  -o ../../test_outs/layer5.grb \
+  -m ../../tests/test_outs/layer5_labels.tsv
 ```
 
 ### Layer 4
@@ -45,5 +45,5 @@ TODO
 ```
 python3 layer2_pcap2grb.py \  
   -i ../../tests/http.cap \  
-  -o ../../test/test_outs/layer5.grb
+  -o ../../test/test_outs/layer2.grb
 ```
