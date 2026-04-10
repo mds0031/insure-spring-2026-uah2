@@ -18,6 +18,7 @@ def generate_grb_file(matrix, output_dir):
         f.write(output)
     file_count += 1
 
+# Generates a timestamped results directory within the specified output directory
 def generate_results_dir(base_dir):
     results_dir = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir_path = os.path.join(base_dir, results_dir)
@@ -25,11 +26,11 @@ def generate_results_dir(base_dir):
         os.makedirs(output_dir_path)
     return output_dir_path
 
+# Creates a tar.gz archive of the specified source directory
 def create_tar(source_dir, output_filename):
     with tarfile.open(output_filename, "w:gz") as tar:
         tar.add(source_dir, arcname=os.path.basename(source_dir))
         tar.close()
-
 
 # Converts MAC Address String to an Integer for use in the matrix
 def mac_to_int(mac):
@@ -57,13 +58,14 @@ def check_tshark():
         print("Error: TShark is not installed or not in PATH.")
         sys.exit(1)
 
-
+# Generates the matrix with the pcap file
 def str_gen_layer2_matrix(pcap, output_dir, subwindow, one_file_mode):
     src_mac = np.array([], dtype=int)
     dst_mac = np.array([], dtype=int)
     vals = np.array([], dtype=int)
     packet_count = 0
 
+    # Command to extract source and destination MAC addresses from the pcap file using TShark
     lines = run_tshark([
         "tshark", "-r", pcap,
         "-T", "fields",
@@ -106,10 +108,9 @@ def str_gen_layer2_matrix(pcap, output_dir, subwindow, one_file_mode):
 
     print("Total Packets Processed:", packet_count)
 
-
+# Main function to run the script
 def main():
     parser = argparse.ArgumentParser()
-
     # Required arguments
     parser.add_argument("-i", "--pcap", required=True, help="Input PCAP file")
     parser.add_argument("-o", "--output", required=True, help="Output directory")
