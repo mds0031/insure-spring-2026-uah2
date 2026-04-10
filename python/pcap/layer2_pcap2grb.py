@@ -1,5 +1,4 @@
 from datetime import datetime
-import tarfile
 import sys
 import argparse
 import subprocess
@@ -21,16 +20,10 @@ def generate_grb_file(matrix, output_dir):
 # Generates a timestamped results directory within the specified output directory
 def generate_results_dir(base_dir):
     results_dir = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir_path = os.path.join(base_dir, results_dir)
+    output_dir_path = os.path.join(base_dir, f"layer2_{results_dir}")
     if not os.path.exists(output_dir_path):
         os.makedirs(output_dir_path)
     return output_dir_path
-
-# Creates a tar.gz archive of the specified source directory
-def create_tar(source_dir, output_filename):
-    with tarfile.open(output_filename, "w:gz") as tar:
-        tar.add(source_dir, arcname=os.path.basename(source_dir))
-        tar.close()
 
 # Converts MAC Address String to an Integer for use in the matrix
 def mac_to_int(mac):
@@ -90,7 +83,8 @@ def str_gen_layer2_matrix(pcap, output_dir, subwindow, one_file_mode):
             packet_count += 1
         except ValueError:
             continue
-        if len(vals) == subwindow:  # +1 because of the initial subwindow value
+        # Check if we've reached the subwindow packet count to write out a GraphBLAS file
+        if len(vals) == subwindow:
             print(f"Generating GraphBLAS file for packets {file_count * subwindow} to {(file_count + 1) * subwindow - 1}...")
             matrix = Matrix.from_coo(src_mac, dst_mac, vals, dup_op=binary.plus)
             generate_grb_file(matrix, output_dir)
@@ -141,9 +135,7 @@ def main():
             str_gen_layer2_matrix(input_pcap, output_dir, window_size, one_file_mode)
 
         print("Finished!")
-        print("Tarring output files...")
-        create_tar(output_dir, os.path.join(args.output, f"{os.path.basename(output_dir)}.tar.gz"))
-
+        
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)
