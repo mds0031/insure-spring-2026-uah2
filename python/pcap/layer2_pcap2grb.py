@@ -110,7 +110,7 @@ def main():
     parser.add_argument("-o", "--output", required=True, help="Output directory")
     # Optional arguments
     parser.add_argument("-w", "--window", type=int, default=sys.maxsize, help="number of packet in each GraphBlas Matrix")
-    parser.add_argument("--binary", action="store_true", help="Use binary capture values instead of strings for performance")
+    parser.add_argument("-b", "--binary", action="store_true", help="Use binary capture values instead of strings for performance")
     parser.add_argument("-O", "--one-file", action="store_true", help="Single file mode - one tar file containing one GraphBLAS matrix..")
     args = parser.parse_args()
 
