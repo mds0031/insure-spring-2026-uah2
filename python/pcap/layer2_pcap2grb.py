@@ -1,3 +1,5 @@
+from datetime import datetime
+import tarfile
 import sys
 import argparse
 import subprocess
@@ -11,10 +13,23 @@ file_count = 0
 def generate_grb_file(matrix, output_dir):
     global file_count
     output = matrix.ss.serialize()
-    filename = output_dir + f"_{file_count}.grb"
+    filename = os.path.join(output_dir, f"{file_count}.grb")
     with open(filename, "wb") as f:
         f.write(output)
     file_count += 1
+
+def generate_results_dir(base_dir):
+    results_dir = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_dir_path = os.path.join(base_dir, results_dir)
+    if not os.path.exists(output_dir_path):
+        os.makedirs(output_dir_path)
+    return output_dir_path
+
+def create_tar(source_dir, output_filename):
+    with tarfile.open(output_filename, "w:gz") as tar:
+        tar.add(source_dir, arcname=os.path.basename(source_dir))
+        tar.close()
+
 
 # Converts MAC Address String to an Integer for use in the matrix
 def mac_to_int(mac):
@@ -113,9 +128,10 @@ def main():
         one_file_mode = args.one_file
 
         check_tshark()
-        os.makedirs(args.output, exist_ok=True)
+        os.makedirs(output_dir, exist_ok=True)
+        output_dir = generate_results_dir(output_dir)  # Create a timestamped results directory within the specified output directory
 
-        print(f"Processing Layer 2 from {args.pcap}")
+        print(f"Processing Layer 2 from {input_pcap}")
         if performance_mode:
             print("Using binary capture values for performance.")
             # TODO: Implement binary capture value generation for better performance (currently using string values for easier debugging)
@@ -124,6 +140,8 @@ def main():
             str_gen_layer2_matrix(input_pcap, output_dir, window_size, one_file_mode)
 
         print("Finished!")
+        print("Tarring output files...")
+        create_tar(output_dir, os.path.join(args.output, f"{os.path.basename(output_dir)}.tar.gz"))
 
     except Exception as e:
         print(f"Error: {e}")
