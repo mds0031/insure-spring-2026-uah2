@@ -1,21 +1,13 @@
 from datetime import datetime
 import sys
 import argparse
-import subprocess
 import os
-import numpy as np
-from graphblas import Matrix, binary
+import utils.conversion as conv
+from utils.matrix import BucketedMatrixBuilder
+import utils.tshark_utils as tshark_utils
+import dpkt
 
 file_count = 0
-
-# Converts a MAC address string to an integer for use in the matrix
-def generate_grb_file(matrix, output_dir):
-    global file_count
-    output = matrix.ss.serialize()
-    filename = os.path.join(output_dir, f"{file_count}.grb")
-    with open(filename, "wb") as f:
-        f.write(output)
-    file_count += 1
 
 # Generates a timestamped results directory within the specified output directory
 def generate_results_dir(base_dir):
@@ -25,41 +17,13 @@ def generate_results_dir(base_dir):
         os.makedirs(output_dir_path)
     return output_dir_path
 
-# Converts MAC Address String to an Integer for use in the matrix
-def mac_to_int(mac):
-    return int(mac.replace(":", ""), 16)
-
-# Runs a TShark command and returns the output as a list of lines
-def run_tshark(cmd):
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode != 0:
-        raise RuntimeError(result.stderr.strip() or "TShark command failed")
-    return result.stdout.splitlines()
-
-# Need to make sure the user has installed TShark
-def check_tshark():
-    try:
-        result = subprocess.run(
-            ["tshark", "-v"],
-            capture_output=True,
-            text=True,
-            timeout=10
-        )
-        if result.returncode != 0:
-            raise RuntimeError
-    except Exception:
-        print("Error: TShark is not installed or not in PATH.")
-        sys.exit(1)
-
 # Generates the matrix with the pcap file
 def str_gen_layer2_matrix(pcap, output_dir, subwindow, one_file_mode):
-    src_mac = np.array([], dtype=int)
-    dst_mac = np.array([], dtype=int)
-    vals = np.array([], dtype=int)
+    generator = BucketedMatrixBuilder(subwindow, output_dir, one_file_mode)
     packet_count = 0
 
     # Command to extract source and destination MAC addresses from the pcap file using TShark
-    lines = run_tshark([
+    lines = tshark_utils.run_tshark([
         "tshark", "-r", pcap,
         "-T", "fields",
         "-e", "eth.src",
@@ -75,32 +39,27 @@ def str_gen_layer2_matrix(pcap, output_dir, subwindow, one_file_mode):
 
         if not eth_src or not eth_dst:
             continue
-
         try:
-            src_mac = np.append(src_mac, mac_to_int(eth_src))
-            dst_mac = np.append(dst_mac, mac_to_int(eth_dst))
-            vals = np.append(vals, 1)
+            generator.add_packet(conv.mac_to_int(eth_src), conv.mac_to_int(eth_dst))
             packet_count += 1
         except ValueError:
             continue
-        # Check if we've reached the subwindow packet count to write out a GraphBLAS file
-        if len(vals) == subwindow:
-            print(f"Generating GraphBLAS file for packets {file_count * subwindow} to {(file_count + 1) * subwindow - 1}...")
-            matrix = Matrix.from_coo(src_mac, dst_mac, vals, dup_op=binary.plus)
-            generate_grb_file(matrix, output_dir)
-            if not one_file_mode:
-                src_mac = np.array([], dtype=int)
-                dst_mac = np.array([], dtype=int)
-                vals = np.array([], dtype=int)
-                matrix.clear()  # Clear the matrix for the next window
-            else:
-                # In one file mode, we keep appending to the same lists and will write the file at the end
-                pass
-
-    matrix = Matrix.from_coo(src_mac, dst_mac, vals, dup_op=binary.plus)
-    generate_grb_file(matrix, output_dir)
-
+    generator.finalize()
     print("Total Packets Processed:", packet_count)
+
+# Generates the matrix with the pcap file using binary capture values for performance
+def bin_gen_layer2_matrix(pcap, output_dir, subwindow, one_file_mode):
+    generator = BucketedMatrixBuilder(subwindow, output_dir, one_file_mode)
+    packet_count = 0
+
+    dpkt.pcap.Reader(open(pcap, "rb"))
+    for timestamp, buf in dpkt.pcap.Reader(open(pcap, "rb")):
+        eth = dpkt.ethernet.Ethernet(buf)
+        generator.add_packet(int.from_bytes(eth.src, 'big'), int.from_bytes(eth.dst, 'big'))
+        packet_count += 1
+    generator.finalize()
+    print("Total Packets Processed:", packet_count)
+
 
 # Main function to run the script
 def main():
@@ -109,7 +68,7 @@ def main():
     parser.add_argument("-i", "--pcap", required=True, help="Input PCAP file")
     parser.add_argument("-o", "--output", required=True, help="Output directory")
     # Optional arguments
-    parser.add_argument("-w", "--window", type=int, default=sys.maxsize, help="number of packet in each GraphBlas Matrix")
+    parser.add_argument("-w", "--window", type=int, default=(1 << 17), help="number of packet in each GraphBlas Matrix")
     parser.add_argument("-b", "--binary", action="store_true", help="Use binary capture values instead of strings for performance")
     parser.add_argument("-O", "--one-file", action="store_true", help="Single file mode - one tar file containing one GraphBLAS matrix..")
     args = parser.parse_args()
@@ -122,14 +81,14 @@ def main():
         output_dir = args.output
         one_file_mode = args.one_file
 
-        check_tshark()
+        tshark_utils.check_tshark()
         os.makedirs(output_dir, exist_ok=True)
         output_dir = generate_results_dir(output_dir)  # Create a timestamped results directory within the specified output directory
 
         print(f"Processing Layer 2 from {input_pcap}")
         if performance_mode:
             print("Using binary capture values for performance.")
-            # TODO: Implement binary capture value generation for better performance (currently using string values for easier debugging)
+            bin_gen_layer2_matrix(input_pcap, output_dir, window_size, one_file_mode)
         else:            
             print("Using string capture values for easier debugging.")
             str_gen_layer2_matrix(input_pcap, output_dir, window_size, one_file_mode)
