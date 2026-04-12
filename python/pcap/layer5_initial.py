@@ -28,7 +28,7 @@ def write_label_map(label_map, path):
             f.write(f"{label_id}\t{label}\n")
 
 
-def str_get_layer5_vals(pcap, window, output, one_file_mode):
+def str_get_layer5_vals(pcap, window, output, one_file_mode, label_map_path):
     builder = BucketedMatrixBuilder(window_size=window, output_dir=output, one_file_mode=one_file_mode)
 
     label_map = {}
@@ -67,7 +67,7 @@ def str_get_layer5_vals(pcap, window, output, one_file_mode):
             continue
     
     builder.finalize()
-    write_label_map(label_map, f"{output}/layer5_labels.tsv")
+    write_label_map(label_map, label_map_path)
 
 
 def main():
@@ -94,10 +94,11 @@ def main():
     input_pcap = args.pcap
     output_dir = args.output
     one_file_mode = args.one_file
+    label_map_path = args.map
     try:
         check_tshark()
         print(f"Retrieving Layer 5 application labels from PCAP file: {input_pcap}")
-        str_get_layer5_vals(input_pcap, window_size, output_dir, one_file_mode)
+        str_get_layer5_vals(input_pcap, window_size, output_dir, one_file_mode, label_map_path)
         print("Finished!")
 
     except Exception as e:
