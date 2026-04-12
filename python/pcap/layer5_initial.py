@@ -1,12 +1,19 @@
 import argparse
-import ipaddress
-import subprocess
+import datetime
+import os
 import sys
 from graphblas import Matrix, binary
 import utils.conversion as conv
 from utils.matrix import BucketedMatrixBuilder
 from utils.tshark_utils import run_tshark, check_tshark
 
+# Generates a timestamped results directory within the specified output directory
+def generate_results_dir(base_dir):
+    results_dir = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_dir_path = os.path.join(base_dir, f"layer5_{results_dir}")
+    if not os.path.exists(output_dir_path):
+        os.makedirs(output_dir_path)
+    return output_dir_path
 
 def choose_app_label(dns_name):
     if dns_name:
