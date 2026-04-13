@@ -2,6 +2,7 @@ import argparse
 import ipaddress
 import subprocess
 import sys
+
 from graphblas import Matrix, binary
 
 
@@ -30,6 +31,7 @@ def check_tshark():
 def ip_to_int(ip):
     return int(ipaddress.ip_address(ip))
 
+
 def hex_to_bytes(hex_string):
     if not hex_string:
         return b""
@@ -42,6 +44,7 @@ def hex_to_bytes(hex_string):
         return bytes.fromhex(cleaned)
     except ValueError:
         return b""
+
 
 def bytes_look_like_text(data, threshold=0.85):
     if not data:
@@ -57,15 +60,20 @@ def bytes_look_like_text(data, threshold=0.85):
 
 def choose_app_label(http_full_uri, http_host, tls_sni, dns_name, data_text="", data_hex=""):
     if http_full_uri:
-        return f"HTTP_URL|{http_full_uri}"
+        return ("HTTP_URL", f"HTTP_URL|{http_full_uri}")
+
     if http_host:
-        return f"HTTP_HOST|{http_host}"
+        return ("HTTP_HOST", f"HTTP_HOST|{http_host}")
+
     if tls_sni:
-        return f"TLS_SNI|{tls_sni}"
+        return ("TLS_SNI", f"TLS_SNI|{tls_sni}")
+
     if dns_name:
-        return f"DNS_QRY|{dns_name}"
+        return ("DNS_QRY", f"DNS_QRY|{dns_name}")
+
     if data_text:
-        return f"APP_STR|{data_text}"
+        return ("APP_STR", f"APP_STR|{data_text}")
+
     if data_hex:
         raw_bytes = hex_to_bytes(data_hex)
         if raw_bytes:
@@ -74,24 +82,30 @@ def choose_app_label(http_full_uri, http_host, tls_sni, dns_name, data_text="", 
                     decoded = raw_bytes.decode("utf-8", errors="ignore").strip()
                 except Exception:
                     decoded = ""
+
                 if decoded:
-                    return f"APP_STR|{decoded}"
-            return f"APP_BIN|{data_hex}"
-    return None
+                    return ("APP_STR", f"APP_STR|{decoded}")
+
+            return ("APP_BIN", f"APP_BIN|{data_hex}")
+
+    return (None, None)
 
 
-def get_or_create_label_id(label, label_map, next_id):
+def get_or_create_label_id(label, label_type, label_map, next_id):
     if label not in label_map:
-        label_map[label] = next_id
+        label_map[label] = {
+            "id": next_id,
+            "type": label_type
+        }
         next_id += 1
-    return label_map[label], next_id
+    return label_map[label]["id"], next_id
 
 
 def write_label_map(label_map, path):
     with open(path, "w", encoding="utf-8") as f:
-        f.write("label_id\tlabel\n")
-        for label, label_id in sorted(label_map.items(), key=lambda x: x[1]):
-            f.write(f"{label_id}\t{label}\n")
+        f.write("label_id\tlabel_type\tlabel\n")
+        for label, info in sorted(label_map.items(), key=lambda x: x[1]["id"]):
+            f.write(f"{info['id']}\t{info['type']}\t{label}\n")
 
 
 def get_layer7_vals(pcap):
@@ -110,13 +124,14 @@ def get_layer7_vals(pcap):
         "-e", "http.request.full_uri",
         "-e", "http.host",
         "-e", "tls.handshake.extensions_server_name",
-        "-e", "dns.qry.name"
+        "-e", "dns.qry.name",
+        "-e", "data.text",
+        "-e", "data.data",
     ])
 
     for line in lines:
         parts = line.split("\t")
 
-        # Ensure we have all requested fields
         while len(parts) < 7:
             parts.append("")
 
@@ -127,7 +142,7 @@ def get_layer7_vals(pcap):
         if not ip_src:
             continue
 
-        app_label = choose_app_label(
+        label_type, app_label = choose_app_label(
             http_full_uri,
             http_host,
             tls_sni,
@@ -141,7 +156,12 @@ def get_layer7_vals(pcap):
 
         try:
             src_id = ip_to_int(ip_src)
-            dst_id, next_label_id = get_or_create_label_id(app_label, label_map, next_label_id)
+            dst_id, next_label_id = get_or_create_label_id(
+                app_label,
+                label_type,
+                label_map,
+                next_label_id
+            )
 
             src_nodes.append(src_id)
             dst_nodes.append(dst_id)
