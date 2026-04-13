@@ -30,8 +30,32 @@ def check_tshark():
 def ip_to_int(ip):
     return int(ipaddress.ip_address(ip))
 
+def hex_to_bytes(hex_string):
+    if not hex_string:
+        return b""
 
-def choose_app_label(http_full_uri, http_host, tls_sni, dns_name):
+    cleaned = hex_string.replace(":", "").replace(" ", "").strip()
+    if len(cleaned) % 2 != 0:
+        return b""
+
+    try:
+        return bytes.fromhex(cleaned)
+    except ValueError:
+        return b""
+
+def bytes_look_like_text(data, threshold=0.85):
+    if not data:
+        return False
+
+    printable = 0
+    for b in data:
+        if 32 <= b <= 126 or b in (9, 10, 13):
+            printable += 1
+
+    return (printable / len(data)) >= threshold
+
+
+def choose_app_label(http_full_uri, http_host, tls_sni, dns_name, data_text="", data_hex=""):
     if http_full_uri:
         return f"HTTP_URL|{http_full_uri}"
     if http_host:
@@ -40,6 +64,19 @@ def choose_app_label(http_full_uri, http_host, tls_sni, dns_name):
         return f"TLS_SNI|{tls_sni}"
     if dns_name:
         return f"DNS_QRY|{dns_name}"
+    if data_text:
+        return f"APP_STR|{data_text}"
+    if data_hex:
+        raw_bytes = hex_to_bytes(data_hex)
+        if raw_bytes:
+            if bytes_look_like_text(raw_bytes):
+                try:
+                    decoded = raw_bytes.decode("utf-8", errors="ignore").strip()
+                except Exception:
+                    decoded = ""
+                if decoded:
+                    return f"APP_STR|{decoded}"
+            return f"APP_BIN|{data_hex}"
     return None
 
 
@@ -80,15 +117,25 @@ def get_layer7_vals(pcap):
         parts = line.split("\t")
 
         # Ensure we have all requested fields
-        while len(parts) < 5:
+        while len(parts) < 7:
             parts.append("")
 
-        ip_src, http_full_uri, http_host, tls_sni, dns_name = [p.strip() for p in parts[:5]]
+        ip_src, http_full_uri, http_host, tls_sni, dns_name, data_text, data_hex = [
+            p.strip() for p in parts[:7]
+        ]
 
         if not ip_src:
             continue
 
-        app_label = choose_app_label(http_full_uri, http_host, tls_sni, dns_name)
+        app_label = choose_app_label(
+            http_full_uri,
+            http_host,
+            tls_sni,
+            dns_name,
+            data_text,
+            data_hex
+        )
+
         if not app_label:
             continue
 
