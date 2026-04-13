@@ -2,6 +2,7 @@ import argparse
 import datetime
 import os
 import sys
+import dpkt
 from graphblas import Matrix, binary
 import utils.conversion as conv
 from utils.matrix import BucketedMatrixBuilder
@@ -34,13 +35,41 @@ def write_label_map(label_map, path):
         for label, label_id in sorted(label_map.items(), key=lambda x: x[1]):
             f.write(f"{label_id}\t{label}\n")
 
-
-def str_get_layer5_vals(pcap, window, output, one_file_mode, label_map_path):
-    builder = BucketedMatrixBuilder(window_size=window, output_dir=output, one_file_mode=one_file_mode)
+# AI WRITTEN - This function is not fully implemented yet, but it will be similar to the str_gen_layer2_matrix function, but using dpkt for performance and binary capture values instead of strings.
+def bin_gen_layer5_matrix(pcap, output_dir, subwindow, one_file_mode, label_map_path):
+    builder = BucketedMatrixBuilder(window_size=subwindow, output_dir=output_dir, one_file_mode=one_file_mode)
 
     label_map = {}
     next_label_id = 0
 
+    for timestamp, buf in dpkt.pcap.Reader(open(pcap, "rb")):
+        eth = dpkt.ethernet.Ethernet(buf)
+        if not isinstance(eth.data, dpkt.ip.IP):
+            continue
+        ip = eth.data
+        if not isinstance(ip.data, dpkt.dns.DNS):
+            continue
+        dns = ip.data
+
+        app_label = choose_app_label(dns.qd[0].name.decode() if dns.qd else "")
+        if not app_label:
+            continue
+
+        try:
+            src_id = conv.ip_to_int(ip.src)
+            dst_id, next_label_id = get_or_create_label_id(app_label, label_map, next_label_id)
+            builder.add_packet(src_id, dst_id)
+        except ValueError:
+            continue
+    
+    builder.finalize()
+    write_label_map(label_map, label_map_path)
+
+def str_gen_layer2_matrix(pcap, window, output, one_file_mode, label_map_path):
+    builder = BucketedMatrixBuilder(window_size=window, output_dir=output, one_file_mode=one_file_mode)
+
+    label_map = {}
+    next_label_id = 0
 
     lines = run_tshark([
         "tshark", "-r", pcap,
@@ -103,9 +132,13 @@ def main():
     one_file_mode = args.one_file
     label_map_path = args.map
     try:
-        check_tshark()
-        print(f"Retrieving Layer 5 application labels from PCAP file: {input_pcap}")
-        str_get_layer5_vals(input_pcap, window_size, output_dir, one_file_mode, label_map_path)
+        if args.binary:
+            print(f"Generating Layer 5 matrices in binary mode from PCAP file: {input_pcap}")
+            bin_gen_layer5_matrix(input_pcap, output_dir, window_size, one_file_mode, label_map_path)
+        else:
+            check_tshark()
+            print(f"Retrieving Layer 5 application labels from PCAP file: {input_pcap}")
+            str_gen_layer2_matrix(input_pcap, window_size, output_dir, one_file_mode, label_map_path)
         print("Finished!")
 
     except Exception as e:
