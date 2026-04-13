@@ -36,10 +36,18 @@ python3 layer5_initial.py \
 ```
 
 ### Layer 4
-TODO
+```
+python3 layer4_initial.py \
+  -i ../../tests/http.cap \
+  -o ../../tests/test_outs/layer4.grb
+```
 
 ### Layer 3
-TODO
+```
+python3 layer3_initial.py \
+  -i ../../tests/http.cap \
+  -o ../../tests/test_outs/layer3.grb
+```
 
 ### Layer 2
 ```
