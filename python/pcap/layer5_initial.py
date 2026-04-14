@@ -44,17 +44,17 @@ def bin_gen_layer5_matrix(pcap, output_dir, subwindow, one_file_mode, label_map_
 
     for timestamp, buf in dpkt.pcap.Reader(open(pcap, "rb")):
         eth = dpkt.ethernet.Ethernet(buf)
-        if not isinstance(eth.data, dpkt.ip.IP):
-            continue
         ip = eth.data
-        if not isinstance(ip.data, dpkt.dns.DNS):
+        udp = ip.data
+        if udp.dport != 53 and udp.sport != 53:  
             continue
-        dns = ip.data
 
-        app_label = choose_app_label(dns.qd[0].name.decode() if dns.qd else "")
+        dns = dpkt.dns.DNS(udp.data)
+        if dns.qd:
+            query_name = dns.qd[0].name
+            app_label = choose_app_label(query_name)
         if not app_label:
             continue
-
         try:
             src_id = conv.ip_to_int(ip.src)
             dst_id, next_label_id = get_or_create_label_id(app_label, label_map, next_label_id)
@@ -119,7 +119,7 @@ def main():
         help="Output label map TSV file (default: layer5_labels.tsv)"
     )
     # Optional arguments for performance and flexibility
-    parser.add_argument("-w", "--window", type=int, default=sys.maxsize, help="number of packets in each GraphBLAS Matrix")
+    parser.add_argument("-w", "--window", type=int, default=(1 << 17), help="number of packets in each GraphBLAS Matrix")
     parser.add_argument("-b", "--binary", action="store_true", help="Use binary capture values instead of strings for performance")
     parser.add_argument("-O", "--one-file", action="store_true", help="Single file mode - one tar file containing one GraphBLAS matrix.")
 
