@@ -1,4 +1,5 @@
 import argparse
+import datetime
 #import ipaddress
 #import subprocess
 import os
@@ -61,14 +62,14 @@ from utils.tshark_utils import run_tshark, check_tshark
 
 def choose_app_label(http_full_uri, http_host, tls_sni, dns_name):
     if http_full_uri:
-        return (f"HTTP_URL|{http_full_uri}")
+        return f"HTTP_URL|{http_full_uri}"
     if http_host:
-        return (f"HTTP_HOST|{http_host}")
+        return f"HTTP_HOST|{http_host}"
     if tls_sni:
-        return (f"TLS_SNI|{tls_sni}")
+        return f"TLS_SNI|{tls_sni}"
     if dns_name:
-        return ("DNS_QRY", f"DNS_QRY|{dns_name}")
-    return (None)
+        return f"DNS_QRY|{dns_name}"
+    return None
 
 
 def get_or_create_label_id(label, label_map, next_id):
@@ -84,34 +85,270 @@ def write_label_map(label_map, path):
         for label, label_id in sorted(label_map.items(), key=lambda x: x[1]):
             f.write(f"{label_id}\t{label}\n")
 
-# Non functional. Need to come back to this and implement for the appropriate layer and mapping
-# Also need to update to write to D4M
+
+def safe_decode(value):
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        try:
+            return value.decode("utf-8", errors="ignore").strip()
+        except Exception:
+            return ""
+    return str(value).strip()
+
+
+def parse_http_fields(tcp_data):
+    """
+    Returns:
+        (http_full_uri, http_host)
+    """
+    try:
+        req = dpkt.http.Request(tcp_data)
+    except (dpkt.dpkt.NeedData, dpkt.dpkt.UnpackError):
+        return "", ""
+
+    host = safe_decode(req.headers.get("host", ""))
+    uri = safe_decode(getattr(req, "uri", ""))
+
+    if uri and host:
+        # Match tshark's full_uri behavior as closely as possible
+        if uri.startswith("http://") or uri.startswith("https://"):
+            full_uri = uri
+        else:
+            full_uri = f"http://{host}{uri}"
+    else:
+        full_uri = ""
+
+    return full_uri, host
+
+
+def parse_dns_name(l4_data):
+    """
+    Works for UDP DNS payloads and TCP DNS payloads.
+    TCP DNS usually has a 2-byte length prefix.
+    """
+    # UDP-style parse first
+    try:
+        dns = dpkt.dns.DNS(l4_data)
+        if dns.qd and dns.qd[0].name:
+            return safe_decode(dns.qd[0].name)
+    except (dpkt.dpkt.NeedData, dpkt.dpkt.UnpackError):
+        pass
+
+    # TCP-style parse with 2-byte length prefix
+    if len(l4_data) >= 2:
+        try:
+            dns = dpkt.dns.DNS(l4_data[2:])
+            if dns.qd and dns.qd[0].name:
+                return safe_decode(dns.qd[0].name)
+        except (dpkt.dpkt.NeedData, dpkt.dpkt.UnpackError):
+            pass
+
+    return ""
+
+
+def parse_tls_sni(tcp_data):
+    """
+    Best-effort extraction of SNI from a TLS ClientHello.
+    """
+    try:
+        records, _ = dpkt.ssl.tls_multi_factory(tcp_data)
+    except (dpkt.dpkt.NeedData, dpkt.dpkt.UnpackError, ssl.SSLError, Exception):
+        return ""
+
+    for record in records:
+        try:
+            if record.type != 22:  # Handshake
+                continue
+
+            hs_bytes = record.data
+            if not hs_bytes:
+                continue
+
+            # dpkt may already decode handshake records in some environments,
+            # but raw parsing is more reliable across versions.
+            offset = 0
+            while offset + 4 <= len(hs_bytes):
+                hs_type = hs_bytes[offset]
+                hs_len = int.from_bytes(hs_bytes[offset + 1:offset + 4], "big")
+                body_start = offset + 4
+                body_end = body_start + hs_len
+
+                if body_end > len(hs_bytes):
+                    break
+
+                # ClientHello
+                if hs_type == 1:
+                    body = hs_bytes[body_start:body_end]
+                    sni = extract_sni_from_client_hello(body)
+                    if sni:
+                        return sni
+
+                offset = body_end
+
+        except Exception:
+            continue
+
+    return ""
+
+
+def extract_sni_from_client_hello(body):
+    """
+    Parse TLS ClientHello body and extract server_name from extension 0.
+    """
+    try:
+        # Structure:
+        # version(2) + random(32)
+        idx = 0
+        if len(body) < 34:
+            return ""
+
+        idx += 2   # client_version
+        idx += 32  # random
+
+        # session id
+        if idx + 1 > len(body):
+            return ""
+        sid_len = body[idx]
+        idx += 1 + sid_len
+
+        # cipher suites
+        if idx + 2 > len(body):
+            return ""
+        cs_len = int.from_bytes(body[idx:idx + 2], "big")
+        idx += 2 + cs_len
+
+        # compression methods
+        if idx + 1 > len(body):
+            return ""
+        comp_len = body[idx]
+        idx += 1 + comp_len
+
+        # extensions
+        if idx + 2 > len(body):
+            return ""
+        ext_len = int.from_bytes(body[idx:idx + 2], "big")
+        idx += 2
+        ext_end = idx + ext_len
+
+        while idx + 4 <= ext_end and idx + 4 <= len(body):
+            ext_type = int.from_bytes(body[idx:idx + 2], "big")
+            ext_size = int.from_bytes(body[idx + 2:idx + 4], "big")
+            idx += 4
+
+            ext_data = body[idx:idx + ext_size]
+            idx += ext_size
+
+            # server_name
+            if ext_type == 0:
+                if len(ext_data) < 2:
+                    return ""
+                list_len = int.from_bytes(ext_data[0:2], "big")
+                pos = 2
+                limit = min(2 + list_len, len(ext_data))
+
+                while pos + 3 <= limit:
+                    name_type = ext_data[pos]
+                    name_len = int.from_bytes(ext_data[pos + 1:pos + 3], "big")
+                    pos += 3
+
+                    if pos + name_len > limit:
+                        break
+
+                    if name_type == 0:
+                        return safe_decode(ext_data[pos:pos + name_len])
+
+                    pos += name_len
+
+    except Exception:
+        return ""
+
+    return ""
+
+
 def bin_gen_layer7_matrix(pcap, output_dir, subwindow, one_file_mode, label_map_path):
-    builder = BucketedMatrixBuilder(window_size=subwindow, output_dir=output_dir,one_file_mode=one_file_mode)
+    builder = BucketedMatrixBuilder(
+        window_size=subwindow,
+        output_dir=output_dir,
+        one_file_mode=one_file_mode
+    )
 
     label_map = {}
     next_label_id = 0
 
-    for timestamp, buf in dpkt.pcap.Reader(open(pcap, "rb")):
-        eth = dpkt.ethernet.Ethernet(buf)
-        ip = eth.data
-        udp = ip.data
-        if udp.dport != 53 and udp.sport != 53:
-            continue
+    with open(pcap, "rb") as f:
+        reader = dpkt.pcap.Reader(f)
 
-        dns = dpkt.dns.DNS(udp.data)
-        if dns.qd:
-            query_name = dns.qd[0].name
-            app_label = choose_app_label(query_name)
-        if not app_label:
-            continue
-        try:
-            src_id = conv.ip_to_int(ip.src)
-            dst_id, next_label_id = get_or_create_label_id(app_label, label_map, next_label_id)
-            builder.add_packet(src_id, dst_id)
-        except ValueError:
-            continue
-    
+        for _, buf in reader:
+            try:
+                eth = dpkt.ethernet.Ethernet(buf)
+            except (dpkt.dpkt.NeedData, dpkt.dpkt.UnpackError):
+                continue
+
+            ip = eth.data
+            if not isinstance(ip, (dpkt.ip.IP, dpkt.ip6.IP6)):
+                continue
+
+            src_ip = getattr(ip, "src", None)
+            if not src_ip:
+                continue
+
+            http_full_uri = ""
+            http_host = ""
+            tls_sni = ""
+            dns_name = ""
+
+            l4 = ip.data
+
+            # TCP-based parsing: HTTP, TLS, TCP-DNS
+            if isinstance(l4, dpkt.tcp.TCP):
+                tcp = l4
+                tcp_data = bytes(tcp.data)
+
+                if not tcp_data:
+                    continue
+
+                # HTTP
+                if tcp.dport in (80, 8080, 8000) or tcp.sport in (80, 8080, 8000):
+                    http_full_uri, http_host = parse_http_fields(tcp_data)
+
+                # TLS
+                if tcp.dport == 443 or tcp.sport == 443:
+                    tls_sni = parse_tls_sni(tcp_data)
+
+                # DNS over TCP
+                if tcp.dport == 53 or tcp.sport == 53:
+                    dns_name = parse_dns_name(tcp_data)
+
+            # UDP-based parsing: mainly DNS
+            elif isinstance(l4, dpkt.udp.UDP):
+                udp = l4
+                udp_data = bytes(udp.data)
+
+                if udp.dport == 53 or udp.sport == 53:
+                    dns_name = parse_dns_name(udp_data)
+
+            app_label = choose_app_label(
+                http_full_uri,
+                http_host,
+                tls_sni,
+                dns_name
+            )
+
+            if not app_label:
+                continue
+
+            try:
+                src_id = conv.ip_to_int(src_ip)
+                dst_id, next_label_id = get_or_create_label_id(
+                    app_label,
+                    label_map,
+                    next_label_id
+                )
+                builder.add_packet(src_id, dst_id)
+            except ValueError:
+                continue
+
     builder.finalize()
     write_label_map(label_map, label_map_path)
 
@@ -157,7 +394,7 @@ def str_gen_layer7_matrix(pcap, window, output, one_file_mode, label_map_path):
         try:
             src_id = conv.ip_to_int(ip_src)
             dst_id, next_label_id = get_or_create_label_id(app_label, label_map, next_label_id)
-            builder.add_packer(src_id, dst_id)
+            builder.add_packet(src_id, dst_id)
         except ValueError:
             continue
 
@@ -203,8 +440,6 @@ def main():
          print("Finished!")
 
     except Exception as e:
-        print(f"Error: {e}")
-        sys.exit(1)except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)
 
