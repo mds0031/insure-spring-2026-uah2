@@ -3,6 +3,7 @@ import datetime # is this used?
 import os
 import sys
 import dpkt
+import pickle
 
 from graphblas import Matrix, binary
 import utils.conversion as conv
@@ -328,11 +329,17 @@ def sanitize_d4m_key(value):
 
 def write_d4m_assoc_file(rows, cols, vals, out_path):
     """
-    Persist a Layer 7 D4M associative array to disk.
+    Persist a Layer 7 D4M associative array as a single file by serializing
+    the actual D4M Assoc object.
+
     rows, cols, vals are lists of strings.
+    out_path should usually end with .pkl or .assoc.pkl
     """
     if D4M is None:
         raise RuntimeError("D4M.py is not installed. String mode requires D4M.assoc.")
+
+    if not rows or not cols or not vals:
+        raise ValueError("Cannot write empty D4M associative array.")
 
     row_str = ",".join(rows) + ","
     col_str = ",".join(cols) + ","
@@ -340,10 +347,8 @@ def write_d4m_assoc_file(rows, cols, vals, out_path):
 
     A = D4M.assoc.Assoc(row_str, col_str, val_str)
 
-    with open(out_path, "w", encoding="utf-8") as f:
-        f.write("row\tcol\tval\n")
-        for r, c, v in zip(rows, cols, vals):
-            f.write(f"{r}\t{c}\t{v}\n")
+    with open(out_path, "wb") as f:
+        pickle.dump(A, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 def str_gen_layer7_matrix(pcap, window, output, one_file_mode, label_map_path=None):
@@ -381,7 +386,11 @@ def str_gen_layer7_matrix(pcap, window, output, one_file_mode, label_map_path=No
         if not rows:
             return
 
-        out_path = os.path.join(output, f"layer7_str_{bucket_index:05d}.tsv")
+        if one_file_mode:
+            out_path = os.path.join(output, "layer7_string_all.assoc.pkl")
+        else:
+            out_path = os.path.join(output, f"layer7_str_{bucket_index:05d}.assoc.pkl")
+
         write_d4m_assoc_file(rows, cols, vals, out_path)
 
         rows = []
@@ -411,7 +420,7 @@ def str_gen_layer7_matrix(pcap, window, output, one_file_mode, label_map_path=No
         cols.append(col_key)
         vals.append(val_key)
 
-        if len(rows) >= window:
+        if not one_file_mode and len(rows) >= window:
             flush_bucket()
 
     flush_bucket()
@@ -419,21 +428,34 @@ def str_gen_layer7_matrix(pcap, window, output, one_file_mode, label_map_path=No
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Construct a Layer 7 D4M matrix from a PCAP using TShark."
+    description="Construct Layer 7 matrices from a PCAP: string mode outputs D4M-compatible buckets, binary mode outputs GraphBLAS buckets."
     )
 
     parser.add_argument("-i", "--pcap", required=True, help="Input PCAP file")
-    parser.add_argument("-o", "--output", required=True, help="Output folder for matrix files")
+    parser.add_argument("-o", "--output", required=True, help="Output folder for bucketed matrix files")
     parser.add_argument(
         "-m", "--map",
         default="layer7_labels.tsv",
-        help="Output label map TSV file (default: layer7_labels.tsv)"
+        help="Binary-mode label map TSV file (default: layer7_labels.tsv)"
     )
 
     #Optional arguments for performance and flexibility
-    parser.add_argument("-w", "--window", type=int, default=(1 << 17), help="number of packets in each GraphBLAS Matrix")
-    parser.add_argument("-b", "--binary", action="store_true", help="Use binary capture values instead of strings for performance")
-    parser.add_argument("-O", "--one-file", action="store_true", help="Single file mode - one tar file containing one GraphBLAS matrix.")
+    parser.add_argument(
+        "-w", "--window",
+        type=int,
+        default=(1 << 17),
+        help="Number of packet-derived entries per output bucket"
+    )
+    parser.add_argument(
+        "-b", "--binary",
+        action="store_true",
+        help="Binary mode: parse raw packets with dpkt and save GraphBLAS buckets. Default is string mode using tshark and D4M-compatible output."
+    )
+    parser.add_argument(
+        "-O", "--one-file",
+        action="store_true",
+        help="Single-file output mode if supported by the selected backend"
+    )
 
     args = parser.parse_args()
 
@@ -446,13 +468,25 @@ def main():
 
     try:
         if args.binary:
-            print(f"Generating Layer 7 matrices in binary mode from PCAP file: {input_pcap}")
-            bin_gen_layer7_matrix(input_pcap, output_dir, window_size, one_file_mode, label_map_path)
+            print(f"Generating Layer 7 GraphBLAS buckets in binary mode from PCAP file: {input_pcap}")
+            bin_gen_layer7_matrix(
+                input_pcap,
+                output_dir,
+                window_size,
+                one_file_mode,
+                label_map_path
+            )
         else:
             check_tshark()
-            print(f"Retrieving Layer 7 application labels from PCAP file: {input_pcap}")
-            str_gen_layer7_matrix(input_pcap, window_size, output_dir, one_file_mode, label_map_path)
-         
+            print(f"Generating Layer 7 D4M-compatible buckets in string mode from PCAP file: {input_pcap}")
+            str_gen_layer7_matrix(
+                input_pcap,
+                window_size,
+                output_dir,
+                one_file_mode,
+                label_map_path
+            )
+        
         print("Finished!")
 
     except Exception as e:
