@@ -35,7 +35,7 @@ def write_label_map(label_map, path):
         for label, label_id in sorted(label_map.items(), key=lambda x: x[1]):
             f.write(f"{label_id}\t{label}\n")
 
-# AI WRITTEN - This function is not fully implemented yet, but it will be similar to the str_gen_layer2_matrix function, but using dpkt for performance and binary capture values instead of strings.
+# Binary version of the Layer 5 matrix generator using dpkt for performance
 def bin_gen_layer5_matrix(pcap, output_dir, subwindow, one_file_mode, label_map_path):
     builder = BucketedMatrixBuilder(window_size=subwindow, output_dir=output_dir, one_file_mode=one_file_mode)
 
