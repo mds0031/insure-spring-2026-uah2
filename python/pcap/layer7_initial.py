@@ -1,63 +1,19 @@
 import argparse
-import datetime
-#import ipaddress
-#import subprocess
+import datetime # is this used?
 import os
 import sys
 import dpkt
+
 from graphblas import Matrix, binary
 import utils.conversion as conv
 from utils.matrix import BucketedMatrixBuilder
 from utils.tshark_utils import run_tshark, check_tshark
 
-#def run_tshark(cmd):
-#    result = subprocess.run(cmd, capture_output=True, text=True)
-#    if result.returncode != 0:
-#        raise RuntimeError(result.stderr.strip() or "TShark command failed")
-#    return result.stdout.splitlines()
-
-
-#def check_tshark():
-#    try:
-#        result = subprocess.run(
-#            ["tshark", "-v"],
-#            capture_output=True,
-#            text=True,
-#            timeout=10
-#        )
-#        if result.returncode != 0:
-#            raise RuntimeError
-#    except Exception:
-#        print("Error: TShark is not installed or not in PATH.")
-#        sys.exit(1)
-
-
-#def ip_to_int(ip):
-#    return int(ipaddress.ip_address(ip))
-
-
-#def hex_to_bytes(hex_string):
-#    if not hex_string:
-#        return b""
-#    cleaned = hex_string.replace(":", "").replace(" ", "").strip()
-#    if len(cleaned) % 2 != 0:
-#        return b""
-#    try:
-#        return bytes.fromhex(cleaned)
-#    except ValueError:
-#        return b""
-
-
-#def bytes_look_like_text(data, threshold=0.85):
-#    if not data:
-#        return False
-
-#    printable = 0
-#    for b in data:
-#        if 32 <= b <= 126 or b in (9, 10, 13):
-#            printable += 1
-#
-#    return (printable / len(data)) >= threshold
+#For String mode
+try:
+    import D4M.assoc
+except ImportError:
+    D4M = None
 
 
 def choose_app_label(http_full_uri, http_host, tls_sni, dns_name):
@@ -71,14 +27,14 @@ def choose_app_label(http_full_uri, http_host, tls_sni, dns_name):
         return f"DNS_QRY|{dns_name}"
     return None
 
-
+#Applies to binary mode only, remove from str mode
 def get_or_create_label_id(label, label_map, next_id):
     if label not in label_map:
         label_map[label] = next_id
         next_id += 1
     return label_map[label], next_id
 
-
+#Applies to binary mode only, remove from str mode
 def write_label_map(label_map, path):
     with open(path, "w", encoding="utf-8") as f:
         f.write("label_id\tlabel\n")
@@ -265,7 +221,11 @@ def extract_sni_from_client_hello(body):
 
     return ""
 
-
+# Binary mode:
+# - Parse packets directly with dpkt
+# - Convert source IPs to integer row keys
+# - Convert Layer 7 labels to integer column IDs
+# - Save bucketed GraphBLAS matrices plus a label map
 def bin_gen_layer7_matrix(pcap, output_dir, subwindow, one_file_mode, label_map_path):
     builder = BucketedMatrixBuilder(
         window_size=subwindow,
@@ -340,12 +300,12 @@ def bin_gen_layer7_matrix(pcap, output_dir, subwindow, one_file_mode, label_map_
 
             try:
                 src_id = conv.ip_to_int(src_ip)
-                dst_id, next_label_id = get_or_create_label_id(
+                label_id, next_label_id = get_or_create_label_id(
                     app_label,
                     label_map,
                     next_label_id
                 )
-                builder.add_packet(src_id, dst_id)
+                builder.add_packet(src_id, label_id)
             except ValueError:
                 continue
 
