@@ -35,28 +35,28 @@ from utils.tshark_utils import run_tshark, check_tshark
 #    return int(ipaddress.ip_address(ip))
 
 
-def hex_to_bytes(hex_string):
-    if not hex_string:
-        return b""
-    cleaned = hex_string.replace(":", "").replace(" ", "").strip()
-    if len(cleaned) % 2 != 0:
-        return b""
-    try:
-        return bytes.fromhex(cleaned)
-    except ValueError:
-        return b""
+#def hex_to_bytes(hex_string):
+#    if not hex_string:
+#        return b""
+#    cleaned = hex_string.replace(":", "").replace(" ", "").strip()
+#    if len(cleaned) % 2 != 0:
+#        return b""
+#    try:
+#        return bytes.fromhex(cleaned)
+#    except ValueError:
+#        return b""
 
 
-def bytes_look_like_text(data, threshold=0.85):
-    if not data:
-        return False
+#def bytes_look_like_text(data, threshold=0.85):
+#    if not data:
+#        return False
 
-    printable = 0
-    for b in data:
-        if 32 <= b <= 126 or b in (9, 10, 13):
-            printable += 1
-
-    return (printable / len(data)) >= threshold
+#    printable = 0
+#    for b in data:
+#        if 32 <= b <= 126 or b in (9, 10, 13):
+#            printable += 1
+#
+#    return (printable / len(data)) >= threshold
 
 
 def choose_app_label(http_full_uri, http_host, tls_sni, dns_name):
