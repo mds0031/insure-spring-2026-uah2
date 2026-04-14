@@ -312,17 +312,57 @@ def bin_gen_layer7_matrix(pcap, output_dir, subwindow, one_file_mode, label_map_
     builder.finalize()
     write_label_map(label_map, label_map_path)
 
-# Functional but is creating a grb instead of D4M
-def str_gen_layer7_matrix(pcap, window, output, one_file_mode, label_map_path):
-    builder = BucketedMatrixBuilder(window_size=window, output_dir=output, one_file_mode=one_file_mode)
+def sanitize_d4m_key(value):
+    """
+    D4M commonly uses comma-delimited string key encodings.
+    Remove or replace characters that would break row/column key serialization.
+    """
+    if value is None:
+        return ""
+    value = str(value).strip()
+    value = value.replace(",", "%2C")
+    value = value.replace("\n", " ")
+    value = value.replace("\r", " ")
+    return value
 
-    label_map = {}
-    next_label_id = 0
+
+def write_d4m_assoc_file(rows, cols, vals, out_path):
+    """
+    Persist a Layer 7 D4M associative array to disk.
+    rows, cols, vals are lists of strings.
+    """
+    if D4M is None:
+        raise RuntimeError("D4M.py is not installed. String mode requires D4M.assoc.")
+
+    row_str = ",".join(rows) + ","
+    col_str = ",".join(cols) + ","
+    val_str = ",".join(vals) + ","
+
+    A = D4M.assoc.Assoc(row_str, col_str, val_str)
+
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write("row\tcol\tval\n")
+        for r, c, v in zip(rows, cols, vals):
+            f.write(f"{r}\t{c}\t{v}\n")
+
+
+def str_gen_layer7_matrix(pcap, window, output, one_file_mode, label_map_path=None):
+    """
+    String mode:
+    - Read Layer 7 labels via tshark field extraction
+    - Keep row and column keys as strings
+    - Save bucketed D4M-style triples / associative-array inputs
+    """
+    if D4M is None:
+        raise RuntimeError("D4M.py is not installed. String mode requires D4M.assoc.")
+
+    os.makedirs(output, exist_ok=True)
 
     lines = run_tshark([
-        "tshark",
-        "-r", pcap,
+        "tshark", "-r", pcap,
         "-T", "fields",
+        "-E", "separator=\t",
+        "-E", "occurrence=f",
         "-e", "ip.src",
         "-e", "http.request.full_uri",
         "-e", "http.host",
@@ -330,36 +370,51 @@ def str_gen_layer7_matrix(pcap, window, output, one_file_mode, label_map_path):
         "-e", "dns.qry.name",
     ])
 
+    rows = []
+    cols = []
+    vals = []
+
+    bucket_index = 0
+
+    def flush_bucket():
+        nonlocal rows, cols, vals, bucket_index
+        if not rows:
+            return
+
+        out_path = os.path.join(output, f"layer7_str_{bucket_index:05d}.tsv")
+        write_d4m_assoc_file(rows, cols, vals, out_path)
+
+        rows = []
+        cols = []
+        vals = []
+        bucket_index += 1
+
     for line in lines:
         parts = line.split("\t")
-
         while len(parts) < 5:
             parts.append("")
 
-        ip_src, http_full_uri, http_host, tls_sni, dns_name = [ p.strip() for p in parts[:5] ]
+        ip_src, http_full_uri, http_host, tls_sni, dns_name = [p.strip() for p in parts[:5]]
 
         if not ip_src:
             continue
 
-        app_label = choose_app_label(
-            http_full_uri,
-            http_host,
-            tls_sni,
-            dns_name
-        )
-
+        app_label = choose_app_label(http_full_uri, http_host, tls_sni, dns_name)
         if not app_label:
             continue
 
-        try:
-            src_id = conv.ip_to_int(ip_src)
-            dst_id, next_label_id = get_or_create_label_id(app_label, label_map, next_label_id)
-            builder.add_packet(src_id, dst_id)
-        except ValueError:
-            continue
+        row_key = sanitize_d4m_key(ip_src)
+        col_key = sanitize_d4m_key(app_label)
+        val_key = "1"
 
-    builder.finalize()
-    write_label_map(label_map, label_map_path)
+        rows.append(row_key)
+        cols.append(col_key)
+        vals.append(val_key)
+
+        if len(rows) >= window:
+            flush_bucket()
+
+    flush_bucket()
 
 
 def main():
