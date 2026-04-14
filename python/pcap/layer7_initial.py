@@ -153,7 +153,7 @@ def parse_tls_sni(tcp_data):
     """
     try:
         records, _ = dpkt.ssl.tls_multi_factory(tcp_data)
-    except (dpkt.dpkt.NeedData, dpkt.dpkt.UnpackError, ssl.SSLError, Exception):
+    except (dpkt.dpkt.NeedData, dpkt.dpkt.UnpackError, dpkt.ssl.SSLError, Exception):
         return ""
 
     for record in records:
@@ -399,7 +399,7 @@ def str_gen_layer7_matrix(pcap, window, output, one_file_mode, label_map_path):
             continue
 
     builder.finalize()
-    write_lable_map(label_map, label_map_path)
+    write_label_map(label_map, label_map_path)
 
 
 def main():
@@ -433,11 +433,12 @@ def main():
         if args.binary:
             print(f"Generating Layer 7 matrices in binary mode from PCAP file: {input_pcap}")
             bin_gen_layer7_matrix(input_pcap, output_dir, window_size, one_file_mode, label_map_path)
-        else
+        else:
             check_tshark()
             print(f"Retrieving Layer 7 application labels from PCAP file: {input_pcap}")
             str_gen_layer7_matrix(input_pcap, window_size, output_dir, one_file_mode, label_map_path)
-         print("Finished!")
+         
+        print("Finished!")
 
     except Exception as e:
         print(f"Error: {e}")
