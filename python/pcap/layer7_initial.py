@@ -5,19 +5,36 @@ import sys
 import dpkt
 import pickle
 
+# GraphBLAS imports for binary matrix construction
 from graphblas import Matrix, binary
+
+#Project utility modules
 import utils.conversion as conv
 from utils.matrix import BucketedMatrixBuilder
 from utils.tshark_utils import run_tshark, check_tshark
 
-#For String mode
+#Optional dependency: D4M check
 try:
     import D4M.assoc
 except ImportError:
     D4M = None
 
-
+# -----------------------------------------------------------
+# Layer 7 Label Selection Logic
+# -----------------------------------------------------------
 def choose_app_label(http_full_uri, http_host, tls_sni, dns_name):
+    """
+    Selects the most informative Layer 7 label for a packet.
+
+    Priority order:
+    1. HTTP full URI
+    2. HTTP host
+    3. TLS SNI
+    4. DNS query name
+
+    Returns:
+        A string label or None if no L7 info exists.
+    """
     if http_full_uri:
         return f"HTTP_URL|{http_full_uri}"
     if http_host:
@@ -28,22 +45,42 @@ def choose_app_label(http_full_uri, http_host, tls_sni, dns_name):
         return f"DNS_QRY|{dns_name}"
     return None
 
-#Applies to binary mode only, remove from str mode
+# -----------------------------------------------------------
+# Binary Mode Helpers (GraphBLAS)
+# -----------------------------------------------------------e
 def get_or_create_label_id(label, label_map, next_id):
+    """
+    Maps a string label to a unique integer ID.
+
+    Used only in binary mode where matrices require numeric indices.
+    """
     if label not in label_map:
         label_map[label] = next_id
         next_id += 1
     return label_map[label], next_id
 
-#Applies to binary mode only, remove from str mode
 def write_label_map(label_map, path):
+    """
+    Writes label_id -> label mapping to a TSV file.
+
+    This allows reconstruction of string labels from numeric matrix indices.
+    """
     with open(path, "w", encoding="utf-8") as f:
         f.write("label_id\tlabel\n")
         for label, label_id in sorted(label_map.items(), key=lambda x: x[1]):
             f.write(f"{label_id}\t{label}\n")
+            
+# -----------------------------------------------------------
 
-
+# -----------------------------------------------------------
+# Safe Decoding Utility
+# -----------------------------------------------------------
 def safe_decode(value):
+    """
+    Safely decodes bytes to UTF-8 string.
+
+    Prevents crashes from malformed packet payloads.
+    """
     if value is None:
         return ""
     if isinstance(value, bytes):
@@ -53,9 +90,13 @@ def safe_decode(value):
             return ""
     return str(value).strip()
 
-
+# -----------------------------------------------------------
+# HTTP Parsing
+# -----------------------------------------------------------
 def parse_http_fields(tcp_data):
     """
+    Extract HTTP full URI and host from TCP payload.
+
     Returns:
         (http_full_uri, http_host)
     """
@@ -78,11 +119,16 @@ def parse_http_fields(tcp_data):
 
     return full_uri, host
 
-
+# -----------------------------------------------------------
+# DNS Parsing (UDP + TCP)
+# -----------------------------------------------------------
 def parse_dns_name(l4_data):
-    """
-    Works for UDP DNS payloads and TCP DNS payloads.
-    TCP DNS usually has a 2-byte length prefix.
+     """
+    Extract DNS query name from UDP or TCP DNS payload.
+
+    Handles:
+    - Standard UDP DNS
+    - TCP DNS (with 2-byte length prefix)
     """
     # UDP-style parse first
     try:
@@ -103,10 +149,14 @@ def parse_dns_name(l4_data):
 
     return ""
 
-
+# -----------------------------------------------------------
+# TLS SNI Parsing
+# -----------------------------------------------------------
 def parse_tls_sni(tcp_data):
     """
-    Best-effort extraction of SNI from a TLS ClientHello.
+    Extract Server Name Indication (SNI) from TLS ClientHello.
+
+    This provides domain-level visibility for encrypted traffic.
     """
     try:
         records, _ = dpkt.ssl.tls_multi_factory(tcp_data)
@@ -150,8 +200,10 @@ def parse_tls_sni(tcp_data):
 
 
 def extract_sni_from_client_hello(body):
-    """
-    Parse TLS ClientHello body and extract server_name from extension 0.
+   """
+    Parses TLS ClientHello structure to extract SNI extension.
+
+    This is a manual parser to ensure compatibility across dpkt versions.
     """
     try:
         # Structure:
@@ -222,12 +274,19 @@ def extract_sni_from_client_hello(body):
 
     return ""
 
-# Binary mode:
-# - Parse packets directly with dpkt
-# - Convert source IPs to integer row keys
-# - Convert Layer 7 labels to integer column IDs
-# - Save bucketed GraphBLAS matrices plus a label map
+# -----------------------------------------------------------
+
+# -----------------------------------------------------------
+# Binary Mode Matrix Generation (GraphBLAS)
+# -----------------------------------------------------------
 def bin_gen_layer7_matrix(pcap, output_dir, subwindow, one_file_mode, label_map_path):
+    """
+    Binary mode pipeline:
+    - Parses packets using dpkt
+    - Converts IPs → integer row indices
+    - Converts labels → integer column indices
+    - Builds GraphBLAS sparse matrices
+    """
     builder = BucketedMatrixBuilder(
         window_size=subwindow,
         output_dir=output_dir,
@@ -313,10 +372,12 @@ def bin_gen_layer7_matrix(pcap, output_dir, subwindow, one_file_mode, label_map_
     builder.finalize()
     write_label_map(label_map, label_map_path)
 
+# -----------------------------------------------------------
+# D4M (String Mode)
+# -----------------------------------------------------------
 def sanitize_d4m_key(value):
     """
-    D4M commonly uses comma-delimited string key encodings.
-    Remove or replace characters that would break row/column key serialization.
+    Cleans string keys to avoid breaking D4M comma-separated encoding.
     """
     if value is None:
         return ""
@@ -329,11 +390,7 @@ def sanitize_d4m_key(value):
 
 def write_d4m_assoc_file(rows, cols, vals, out_path):
     """
-    Persist a Layer 7 D4M associative array as a single file by serializing
-    the actual D4M Assoc object.
-
-    rows, cols, vals are lists of strings.
-    out_path should usually end with .pkl or .assoc.pkl
+    Writes a D4M associative array object to disk using pickle.
     """
     if D4M is None:
         raise RuntimeError("D4M.py is not installed. String mode requires D4M.assoc.")
@@ -353,10 +410,10 @@ def write_d4m_assoc_file(rows, cols, vals, out_path):
 
 def str_gen_layer7_matrix(pcap, window, output, one_file_mode, label_map_path=None):
     """
-    String mode:
-    - Read Layer 7 labels via tshark field extraction
-    - Keep row and column keys as strings
-    - Save bucketed D4M-style triples / associative-array inputs
+    String mode pipeline:
+    - Uses tshark for extraction
+    - Keeps row/column labels as strings
+    - Outputs D4M-compatible associative arrays
     """
     if D4M is None:
         raise RuntimeError("D4M.py is not installed. String mode requires D4M.assoc.")
@@ -382,6 +439,7 @@ def str_gen_layer7_matrix(pcap, window, output, one_file_mode, label_map_path=No
     bucket_index = 0
 
     def flush_bucket():
+        """Writes current bucket to disk."""
         nonlocal rows, cols, vals, bucket_index
         if not rows:
             return
