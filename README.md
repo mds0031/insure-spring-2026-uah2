@@ -1,5 +1,43 @@
-# insure-spring-2026-uah2
-UAH Team 2 repository for INSuRE Spring 2026 – code, documentation, and analysis artifacts for Next Generation Spatial Temporal Cyber Data Products (v3)
+# INSuRE Spring 2026 UAH Team 2
+
+Python tooling and analysis workflows for converting PCAP network captures into GraphBLAS/D4M-based cyber data products across OSI layers for the **Next Generation Spatial Temporal Cyber Data Products (v3)** project.
+
+## Overview
+
+This repository contains code, test artifacts, and supporting utilities used by UAH Team 2 for the INSuRE Spring 2026 research effort. The primary objective is to transform packet capture (`.pcap` / `.cap`) data into graph-oriented representations that support scalable cyber analytics across multiple OSI layers.
+
+The repository currently includes:
+
+- PCAP parsing tools for selected OSI layers
+- GraphBLAS-based matrix generation
+- D4M-compatible output support for Layer 7 workflows
+- Test PCAP files and output directories
+- Utility scripts for sanity checks and downstream support
+
+## Repository Structure
+
+```text
+insure-spring-2026-uah2/
+├── python/
+│   ├── pcap/        # Layer-specific PCAP parsing and graph generation tools
+│   └── utils/       # Shared helper scripts and utilities
+├── tests/           # Sample PCAP files and generated test outputs
+└── README.md
+```
+
+## Supported Layers
+- Layer 2 - Data Link
+- Layer 3 - Network
+- Layer 4 - Transport
+- layer 5 - Session
+- layer 7 - Application
+
+## Notes
+- Layer 6 (Presentation) is excluded from this study because its values coincide with Layer 7 (Application).
+- Layer 1 (Physical) is excluded because PCAP files do not contain sufficient information to determine directionality (source vs. destination).
+
+# Getting Started
+
 ## Dependencies
 - python-graphblas installed
 - ILANDS pullled and installed
