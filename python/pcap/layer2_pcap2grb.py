@@ -3,7 +3,7 @@ import sys
 import argparse
 import os
 import utils.conversion as conv
-from utils.matrix import BucketedMatrixBuilder
+from utils.matrix import BucketedMatrixBuilder, StringBucketedMatrixBuilder
 import utils.tshark_utils as tshark_utils
 import dpkt
 
@@ -19,7 +19,7 @@ def generate_results_dir(base_dir):
 
 # Generates the matrix with the pcap file
 def str_gen_layer2_matrix(pcap, output_dir, subwindow, one_file_mode):
-    generator = BucketedMatrixBuilder(subwindow, output_dir, one_file_mode)
+    generator = StringBucketedMatrixBuilder(subwindow, output_dir, one_file_mode)
     packet_count = 0
 
     # Command to extract source and destination MAC addresses from the pcap file using TShark
@@ -40,7 +40,7 @@ def str_gen_layer2_matrix(pcap, output_dir, subwindow, one_file_mode):
         if not eth_src or not eth_dst:
             continue
         try:
-            generator.add_packet(conv.mac_to_int(eth_src), conv.mac_to_int(eth_dst))
+            generator.add_packet(eth_src, eth_dst)
             packet_count += 1
         except ValueError:
             continue
