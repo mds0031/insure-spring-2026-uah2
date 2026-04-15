@@ -27,8 +27,17 @@ def ip_to_int(ip):
     return (int(parts[0]) << 24) + (int(parts[1]) << 16) + (int(parts[2]) << 8) + int(parts[3])
 
 
-def ip_port_to_int(ip, port):
-    return (ip_to_int(ip) << 16) + int(port)
+def bucket_ip_int(ip_int, prefix):
+    if prefix == 32:
+        return ip_int
+    mask = (0xFFFFFFFF << (32 - prefix)) & 0xFFFFFFFF
+    return ip_int & mask
+    
+
+def ip_port_to_int(ip, port, prefix=32):
+    ip_int = ip_to_int(ip)
+    bucketed_ip = bucket_ip_int(ip_int, prefix)
+    return (bucketed_ip << 16) + int(port)
 
 
 def run_tshark(cmd):
@@ -121,12 +130,14 @@ def main():
     parser.add_argument("-i", "--pcap", required=True, help="Input PCAP file")
     parser.add_argument("-o", "--output", required=True, help="GraphBlas Output Directory")
     parser.add_argument("-w", "--window", type=int, default=sys.maxsize, help="number of packets in each GraphBlas Matrix")
+    parser.add_argument("--bucket", type=int, default=32, choices=[8, 16, 24, 32], help="Subnet prefix for IP bucketing (default: 32)")
 
     args = parser.parse_args()
 
     pcap_file = args.pcap
     output_dir = args.output
     subwindow = args.window
+    bucket_prefix = args.bucket
 
     try:
         check_tshark()
@@ -135,6 +146,7 @@ def main():
         results_dir = output_dir
 
         print(f"Retrieving Layer 4 IP:Port data from PCAP file {pcap_file}")
+        print(f"IP bucketing prefix: /{bucket_prefix}")
         gen_layer4_matrixs(pcap_file, subwindow, results_dir)
 
 
