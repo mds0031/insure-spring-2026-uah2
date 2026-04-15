@@ -111,7 +111,7 @@ class StringBucketedMatrixBuilder:
         A = D4M.assoc.Assoc(rows_str, cols_str, vals_str, None, "add", convert_val=True)
         A.printfull()
         print(f"Generating String array matrix file for matrix {self.matrix_count}...")
-        output_path = f"{self.output_dir}/{self.matrix_count}.assoc.pk1"
+        output_path = f"{self.output_dir}/{self.matrix_count}.assoc.pkl"
         with open(output_path, "wb") as f:
             pickle.dump(A, f, protocol=pickle.HIGHEST_PROTOCOL)
         self.matrix_count += 1
