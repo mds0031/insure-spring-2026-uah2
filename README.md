@@ -98,31 +98,37 @@ python3 layer4_initial.py \
   -o ../../tests/test_outs/layer4.grb
 ```
 ## Layer 5 & 7
-### String mode
+### One-file String mode
 ```
-mkdir -p ../../tests/test_outs/layer5_7_str
-python3 layer5_7_pcap_to_grb_d4m.py \
-  -i ../../tests/http.cap \
-  -o ../../tests/test_outs/layer5_7_str
+python3 pcap/layer7_pcap2_grb_d4m.py   
+  -i ../tests/http.cap
+  -o ../tests/test_outs/layer7/one_file 
+  -O
+```
+### One-file Binary mode
+```
+python3 pcap/layer7_pcap2_grb_d4m.py   
+  -i ../tests/http.cap
+  -o ../tests/test_outs/layer7/one_file
+  -m layer7_labels.tsv 
+  -b 
+  -O
 ```
 ### Binary mode
 ```
-mkdir -p ../../tests/test_outs/layer5_7_bin
-python3 layer5_7_pcap_to_grb_d4m.py \
-  -i ../../tests/http.cap \
-  -o ../../tests/test_outs/layer5_7_bin \
-  -m ../../tests/test_outs/layer5_7_bin/layer5_7_labels.tsv \
-  -b
+python3 pcap/layer7_pcap2_grb_d4m.py
+  -i ../tests/http.cap   
+  -o ../tests/test_outs/layer7   
+  -m layer7_labels.tsv   
+  -b 
+  -w 1
 ```
-### One-file mode
+## String mode
 ```
-mkdir -p ../../tests/test_outs/layer5_7_onefile
-python3 layer5_7_pcap_to_grb_d4m.py \
-  -i ../../tests/http.cap \
-  -o ../../tests/test_outs/layer5_7_onefile \
-  -m ../../tests/test_outs/layer5_7_onefile/layer5_7_labels.tsv \
-  -b \
-  -O
+python3 pcap/layer7_pcap2_grb_d4m.py
+  -i ../tests/http.cap
+  -o ../tests/test_outs/layer7 
+  -w 1
 ```
 
 ### Validation Example
