@@ -37,26 +37,43 @@ insure-spring-2026-uah2/
 - Layer 1 (Physical) is excluded because PCAP files do not contain sufficient information to determine directionality (source vs. destination).
 
 # Getting Started
+1. Clone the Repository
+```
+git clone https://github.com/mds0031/insure-spring-2026-uah2.git
+cd insure-spring-2026-uah2
+```
+2. Create and activate a Python virtual enivronment
+```
+python3 -m venv .venv
+source .venv/bin/activate
+```
+3. Install Python dependencies
+```
+pip install --upgrade pip
+pip install python-graphblas dpkt
+```
+4. Install external project dependencies
+This project also depends on:
 
-## Dependencies
-- python-graphblas installed
-- ILANDS pullled and installed
-- D4M pulled and installed
-- dpkt installed in D4M enviroment for running
-## Description
-TODO
-## Python
-### PCAP
-Tools that read through a network capture file and generates matrixes for analysis on each OSI layer. 
-### Utils
-Python scripts needed by other directories for testing and sanity checking
-## Tests
-Holds network capture files and outputs for testing purposes
-## Notes
-- Layer 6 (Presentation) is excluded from this study because its values coincide with Layer 7 (Application).
-- Layer 1 (Physical) is excluded because PCAP files do not contain sufficient information to determine directionality (source vs. destination).
+- ILANDS-sensor – supporting workflows related to cyber data processing GitHub: https://github.com/CAIDA/ILANDS-sensor
+- D4M.py – D4M support for associative-array style data handling GitHub: https://github.com/Accla/D4M.py
 
-## Validation Examples
+If you are using the Layer 7 D4M workflow, clone and set up D4M.py separately according to its repository instructions.
+
+Example:
+```
+git clone https://github.com/Accla/D4M.py.git
+```
+
+# Dependencies
+## External repositories
+
+- python-graphblas GitHub: https://github.com/python-graphblas/python-graphblas
+- dpkt GitHub: https://github.com/kbandla/dpkt
+- ILANDS GitHub: https://github.com/CAIDA/ILANDS-sensor
+- D4M GitHub: https://github.com/Accla/D4M.py
+
+# Usage Examples
 To run validation on Binary/GraphBLAS
 ```
 cd python/utils
