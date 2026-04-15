@@ -6,7 +6,6 @@ import tarfile
 from datetime import datetime
 
 
-
 def print_help():
     print("Python script that dumps the GraphBLAS matrix from a GraphBLAS file for this project")
     print("Usage:")
@@ -17,22 +16,30 @@ def print_help():
     print("\tpython gdump.py 2 matrices.tar")
     print("\tpython gdump.py 7 0.grb layer7_labels.tsv")
     print("\tpython gdump.py 7 matrices.tar layer7_labels.tsv")
-    
+
+
+def truncate(text, max_len=80):
+    text = str(text)
+    if len(text) <= max_len:
+        return text
+    return text[:max_len - 3] + "..."
+
 
 def int_to_mac(x, upper=False):
     x = int(x)
     if x < 0 or x >= 1 << 48:
         raise ValueError("value out of MAC range (0..2^48-1)")
-    s = f"{x:012x}"                      # 12 hex chars = 6 bytes
+    s = f"{x:012x}"  # 12 hex chars = 6 bytes
     mac = ":".join(s[i:i+2] for i in range(0, 12, 2))
     return mac.upper() if upper else mac
+
 
 def int_to_ip(x):
     """
     Convert an integer back into either IPv4 or IPv6 text form.
 
     Rules:
-    - 0 <= x < 2^32   -> IPv4
+    - 0 <= x < 2^32     -> IPv4
     - 2^32 <= x < 2^128 -> IPv6
     """
     x = int(x)
@@ -48,9 +55,11 @@ def int_to_ip(x):
 
     raise ValueError("value out of IP range (0..2^128-1)")
 
+
 def gdump_layer2(matrix):
     matrix_dict = matrix.to_dicts()
     total = 0
+
     for src, row in matrix_dict.items():
         for dst, count in row.items():
             v = int(count)
@@ -58,7 +67,9 @@ def gdump_layer2(matrix):
             s = int_to_mac(src)
             d = int_to_mac(dst)
             print(s, d, v)
+
     print("total packets:", total)
+
 
 def load_label_map(label_map_file):
     """
@@ -70,7 +81,7 @@ def load_label_map(label_map_file):
     label_map = {}
 
     with open(label_map_file, "r", encoding="utf-8") as f:
-        header = next(f, None)  # skip header
+        next(f, None)  # skip header
         for line in f:
             line = line.rstrip("\n")
             if not line:
@@ -90,7 +101,8 @@ def load_label_map(label_map_file):
 
     return label_map
 
-def gdump_layer7(matrix, label_map):
+
+def gdump_layer7(matrix, label_map, max_label_len=60):
     """
     Dump Layer 7 GraphBLAS matrix entries in readable form.
 
@@ -100,6 +112,8 @@ def gdump_layer7(matrix, label_map):
     """
     matrix_dict = matrix.to_dicts()
     total = 0
+
+    print("-" * 80)
 
     for src, row in matrix_dict.items():
         try:
@@ -112,9 +126,15 @@ def gdump_layer7(matrix, label_map):
             total += v
 
             label = label_map.get(int(dst), f"<unknown-label:{dst}>")
-            print(src_ip, label, v)
+            label = truncate(label, max_label_len)
+
+            print(f"IP: {src_ip}")
+            print(f"URL: {label}")
+            print(f"Count: {v}")
+            print("-" * 80)
 
     print("total observations:", total)
+
 
 def get_matrix_from_grb(filename):
     """
@@ -127,12 +147,10 @@ def get_matrix_from_grb(filename):
     if not path.exists():
         raise FileNotFoundError(f"File not found: {filename}")
 
-    # Direct .grb input
     if path.suffix == ".grb":
         with open(path, "rb") as f:
             return gb.Matrix.ss.deserialize(f.read())
 
-    # Tar archive input
     if path.suffix == ".tar":
         with tarfile.open(path, "r") as tar:
             grb_members = [m for m in tar.getmembers() if m.isfile() and m.name.endswith(".grb")]
@@ -151,7 +169,7 @@ def get_matrix_from_grb(filename):
 
     raise ValueError(f"Unsupported file type: {filename}. Expected .grb or .tar")
 
-"""Dictionary where we can plugin our layers"""
+
 gdump_dict = {
     "2": gdump_layer2,
     "7": gdump_layer7
