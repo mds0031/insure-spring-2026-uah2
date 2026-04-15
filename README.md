@@ -4,6 +4,7 @@ UAH Team 2 repository for INSuRE Spring 2026 – code, documentation, and analys
 - python-graphblas installed
 - ILANDS pullled and installed
 - D4M pulled and installed
+- dpkt installed in D4M enviroment for running
 ## Description
 TODO
 ## Python
@@ -20,12 +21,46 @@ Holds network capture files and outputs for testing purposes
 ## Run Examples
 TODO
 ### Layer 7
-`source ~/D4M.py/venv/bin/activate`
+Enviroment load
 ```
-python3 layer7_initial.py \
+source ~/D4M.py/venv/bin/activate`
+```
+General Run Example
+```
+mkdir -p ../../tests/test_outs/layer7_bin
+
+python3 layer7_pcap2_grb_d4m.py \
   -i ../../tests/http.cap \
-  -o ../../tests/test_outs/layer7.grb \
-  -m ../../tests/test_outs/layer7_labels.tsv
+  -o ../../tests/test_outs/layer7_bin \
+  -m ../../tests/test_outs/layer7_bin/layer7_labels.tsv \
+  -b
+
+
+
+mkdir -p ../../tests/test_outs/layer7_str
+
+python3 layer7_pcap2_grb_d4m.py \
+  -i ../../tests/http.cap \
+  -o ../../tests/test_outs/layer7_str
+```
+One file mode example
+```
+mkdir -p ../../tests/test_outs/layer7_bin_onefile
+
+python3 layer7_pcap2_grb_d4m.py \
+  -i ../../tests/http.cap \
+  -o ../../tests/test_outs/layer7_bin_onefile \
+  -m ../../tests/test_outs/layer7_bin_onefile/layer7_labels.tsv \
+  -b \
+  -O
+
+
+mkdir -p ../../tests/test_outs/layer7_str_onefile
+
+python3 layer7_pcap2_grb_d4m.py \
+  -i ../../tests/http.cap \
+  -o ../../tests/test_outs/layer7_str_onefile \
+  -O
 ```
 ### Layer 5
 ```
