@@ -35,6 +35,7 @@ insure-spring-2026-uah2/
 ## Notes
 - Layer 6 (Presentation) is excluded from this study because its values coincide with Layer 7 (Application).
 - Layer 1 (Physical) is excluded because PCAP files do not contain sufficient information to determine directionality (source vs. destination).
+- Layer 5 & 7 are executed in the same python script. This was done due to layer 7 relying on DNS captures to help decode HTTP/HTTPS.
 
 # Getting Started
 1. Clone the Repository
@@ -74,7 +75,57 @@ git clone https://github.com/Accla/D4M.py.git
 - D4M GitHub: https://github.com/Accla/D4M.py
 
 # Usage Examples
-To run validation on Binary/GraphBLAS
+All examples below assume you are running from
+```
+cd python/pcap
+```
+## Layer 2
+```
+python3 layer2_pcap2grb.py \  
+  -i ../../tests/http.cap \  
+  -o ../../test/test_outs/layer2.grb
+```
+## Layer 3
+```
+python3 layer3_initial.py \
+  -i ../../tests/http.cap \
+  -o ../../tests/test_outs/layer3.grb
+```
+## Layer 4
+```
+python3 layer4_initial.py \
+  -i ../../tests/http.cap \
+  -o ../../tests/test_outs/layer4.grb
+```
+## Layer 5 & 7
+### String mode
+```
+mkdir -p ../../tests/test_outs/layer5_7_str
+python3 layer5_7_pcap_to_grb_d4m.py \
+  -i ../../tests/http.cap \
+  -o ../../tests/test_outs/layer5_7_str
+```
+### Binary mode
+```
+mkdir -p ../../tests/test_outs/layer5_7_bin
+python3 layer5_7_pcap_to_grb_d4m.py \
+  -i ../../tests/http.cap \
+  -o ../../tests/test_outs/layer5_7_bin \
+  -m ../../tests/test_outs/layer5_7_bin/layer5_7_labels.tsv \
+  -b
+```
+### One-file mode
+```
+mkdir -p ../../tests/test_outs/layer5_7_onefile
+python3 layer5_7_pcap_to_grb_d4m.py \
+  -i ../../tests/http.cap \
+  -o ../../tests/test_outs/layer5_7_onefile \
+  -m ../../tests/test_outs/layer5_7_onefile/layer5_7_labels.tsv \
+  -b \
+  -O
+```
+
+### Validation Example
 ```
 cd python/utils
 python3 gdump.py #layer #.grb
@@ -88,76 +139,7 @@ Where #layer is the layer you are decoding, # is the number in front of the grb 
 
 To run validation on D4M/String
 ```
+cd python/utils
+python3 adump.py #.assoc.pkl
 ```
-## Run Examples
-TODO
-### Layer 7
-Enviroment load
-```
-source ~/D4M.py/venv/bin/activate`
-```
-General Run Example
-```
-mkdir -p ../../tests/test_outs/layer7_bin
-
-python3 layer7_pcap2_grb_d4m.py \
-  -i ../../tests/http.cap \
-  -o ../../tests/test_outs/layer7_bin \
-  -m ../../tests/test_outs/layer7_bin/layer7_labels.tsv \
-  -b
-
-
-
-mkdir -p ../../tests/test_outs/layer7_str
-
-python3 layer7_pcap2_grb_d4m.py \
-  -i ../../tests/http.cap \
-  -o ../../tests/test_outs/layer7_str
-```
-One file mode example
-```
-mkdir -p ../../tests/test_outs/layer7_bin_onefile
-
-python3 layer7_pcap2_grb_d4m.py \
-  -i ../../tests/http.cap \
-  -o ../../tests/test_outs/layer7_bin_onefile \
-  -m ../../tests/test_outs/layer7_bin_onefile/layer7_labels.tsv \
-  -b \
-  -O
-
-
-mkdir -p ../../tests/test_outs/layer7_str_onefile
-
-python3 layer7_pcap2_grb_d4m.py \
-  -i ../../tests/http.cap \
-  -o ../../tests/test_outs/layer7_str_onefile \
-  -O
-```
-### Layer 5
-```
-python3 layer5_initial.py \
-  -i ../../tests/http.cap \
-  -o ../../test_outs/layer5.grb \
-  -m ../../tests/test_outs/layer5_labels.tsv
-```
-
-### Layer 4
-```
-python3 layer4_initial.py \
-  -i ../../tests/http.cap \
-  -o ../../tests/test_outs/layer4.grb
-```
-
-### Layer 3
-```
-python3 layer3_initial.py \
-  -i ../../tests/http.cap \
-  -o ../../tests/test_outs/layer3.grb
-```
-
-### Layer 2
-```
-python3 layer2_pcap2grb.py \  
-  -i ../../tests/http.cap \  
-  -o ../../test/test_outs/layer2.grb
-```
+Where # is the number in front of the assoc.pkl file you are decoding
