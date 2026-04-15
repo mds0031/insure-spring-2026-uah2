@@ -1,8 +1,10 @@
 import dpkt
 import os
+from time import perf_counter_ns
 
 import utils.conversion as conv
 from utils.matrix import BucketedMatrixBuilder
+from utils.benchmark import Layer7BenchmarkResult
 
 
 # -----------------------------------------------------------
@@ -245,10 +247,18 @@ def extract_sni_from_client_hello(body):
 
 # -----------------------------------------------------------
 
+def _tally_label_type(app_label: str, bench: Layer7BenchmarkResult) -> None:
+    if app_label.startswith("HTTP_URL|") or app_label.startswith("HTTP_HOST|"):
+        bench.http_labels += 1
+    elif app_label.startswith("TLS_SNI|"):
+        bench.tls_labels += 1
+    elif app_label.startswith("DNS_QRY|"):
+        bench.dns_labels += 1
+
 # -----------------------------------------------------------
 # Binary Mode Matrix Generation (GraphBLAS)
 # -----------------------------------------------------------
-def bin_gen_layer7_matrix(pcap, output_dir, subwindow, one_file_mode, label_map_path, choose_app_label):
+def bin_gen_layer7_matrix(pcap, output_dir, subwindow, one_file_mode, label_map_path, choose_app_label, benchmark=False):
     """
     Binary mode pipeline:
     - Parses packets using dpkt
@@ -265,25 +275,50 @@ def bin_gen_layer7_matrix(pcap, output_dir, subwindow, one_file_mode, label_map_
         one_file_mode=one_file_mode
     )
 
+    bench = Layer7BenchmarkResult(
+        layer=7,
+        mode="binary",
+        pcap=pcap,
+        output_dir=output_dir,
+        window_size=subwindow,
+        one_file_mode=one_file_mode,
+    )
+
     label_map = {}
     next_label_id = 0
+    total_start_ns = perf_counter_ns()
 
     with open(pcap, "rb") as f:
         reader = dpkt.pcap.Reader(f)
 
-        for _, buf in reader:
+        while True:
+            t_read = perf_counter_ns()
+            try:
+                _, buf = next(reader)
+            except StopIteration:
+                break
+            bench.step1_read_ns += perf_counter_ns() - t_read
+            bench.packets_seen += 1
+
+            t_parse = perf_counter_ns()
+
             try:
                 eth = dpkt.ethernet.Ethernet(buf)
             except (dpkt.dpkt.NeedData, dpkt.dpkt.UnpackError):
+                bench.step2_parse_ns += perf_counter_ns() - t_parse
                 continue
 
             ip = eth.data
             if not isinstance(ip, (dpkt.ip.IP, dpkt.ip6.IP6)):
+                bench.step2_parse_ns += perf_counter_ns() - t_parse
                 continue
 
             src_ip = getattr(ip, "src", None)
             if not src_ip:
+                bench.step2_parse_ns += perf_counter_ns() - t_parse
                 continue
+
+            bench.valid_packets += 1
 
             http_full_uri = ""
             http_host = ""
@@ -292,54 +327,49 @@ def bin_gen_layer7_matrix(pcap, output_dir, subwindow, one_file_mode, label_map_
 
             l4 = ip.data
 
-            # TCP-based parsing: HTTP, TLS, TCP-DNS
             if isinstance(l4, dpkt.tcp.TCP):
                 tcp = l4
                 tcp_data = bytes(tcp.data)
 
-                if not tcp_data:
-                    continue
+                if tcp_data:
+                    if tcp.dport in (80, 8080, 8000) or tcp.sport in (80, 8080, 8000):
+                        http_full_uri, http_host = parse_http_fields(tcp_data)
 
-                # HTTP
-                if tcp.dport in (80, 8080, 8000) or tcp.sport in (80, 8080, 8000):
-                    http_full_uri, http_host = parse_http_fields(tcp_data)
+                    if tcp.dport == 443 or tcp.sport == 443:
+                        tls_sni = parse_tls_sni(tcp_data)
 
-                # TLS
-                if tcp.dport == 443 or tcp.sport == 443:
-                    tls_sni = parse_tls_sni(tcp_data)
+                    if tcp.dport == 53 or tcp.sport == 53:
+                        dns_name = parse_dns_name(tcp_data)
 
-                # DNS over TCP
-                if tcp.dport == 53 or tcp.sport == 53:
-                    dns_name = parse_dns_name(tcp_data)
-
-            # UDP-based parsing: mainly DNS
             elif isinstance(l4, dpkt.udp.UDP):
                 udp = l4
                 udp_data = bytes(udp.data)
-
                 if udp.dport == 53 or udp.sport == 53:
                     dns_name = parse_dns_name(udp_data)
 
-            app_label = choose_app_label(
-                http_full_uri,
-                http_host,
-                tls_sni,
-                dns_name
-            )
+            app_label = choose_app_label(http_full_uri, http_host, tls_sni, dns_name)
+            bench.step2_parse_ns += perf_counter_ns() - t_parse
 
             if not app_label:
+                bench.unlabeled_packets += 1
                 continue
 
+            bench.labeled_packets += 1
+            _tally_label_type(app_label, bench)
+
+            t_build = perf_counter_ns()
             try:
                 src_id = conv.ip_to_int(src_ip)
                 label_id, next_label_id = get_or_create_label_id(
-                    app_label,
-                    label_map,
-                    next_label_id
+                    app_label, label_map, next_label_id
                 )
                 builder.add_packet(src_id, label_id)
             except ValueError:
-                continue
+                pass
+            finally:
+                bench.step4_build_ns += perf_counter_ns() - t_build
+
+    t_save = perf_counter_ns()
 
     tsv_text = build_label_map_tsv_text(label_map)
 
@@ -351,3 +381,11 @@ def bin_gen_layer7_matrix(pcap, output_dir, subwindow, one_file_mode, label_map_
         write_label_map(label_map, label_map_path)
     else:
         builder.finalize(label_tsv_text=tsv_text)
+
+    bench.step5_save_ns += perf_counter_ns() - t_save
+    bench.finalize(total_start_ns)
+
+    if benchmark:
+        bench.write_json("layer7_binary_benchmark.json")
+
+    return bench

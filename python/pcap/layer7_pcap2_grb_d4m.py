@@ -68,6 +68,11 @@ def main():
         action="store_true",
         help="Single-file output mode if supported by the selected backend"
     )
+    parser.add_argument(
+        "--benchmark",
+        action="store_true",
+        help="Write benchmark JSON for the selected mode"
+    )
 
     args = parser.parse_args()
 
@@ -77,30 +82,40 @@ def main():
     output_dir = args.output
     one_file_mode = args.one_file
     label_map_path = args.map
+    benchmark = args.benchmark
 
     try:
         if args.binary:
             print(f"Generating Layer 7 GraphBLAS buckets in binary mode from PCAP file: {input_pcap}")
-            bin_gen_layer7_matrix(
+            result = bin_gen_layer7_matrix(
                 input_pcap,
                 output_dir,
                 window_size,
                 one_file_mode,
                 label_map_path,
-                choose_app_label
+                choose_app_label,
+                benchmark
             )
         else:
             check_tshark()
             print(f"Generating Layer 7 D4M-compatible buckets in string mode from PCAP file: {input_pcap}")
-            str_gen_layer7_matrix(
+            result = str_gen_layer7_matrix(
                 input_pcap,
                 window_size,
                 output_dir,
                 one_file_mode,
-                choose_app_label
+                choose_app_label,
+                benchmark
             )
         
         print("Finished!")
+
+        if args.benchmark:
+            print(
+                f"Mode={result.mode} packets={result.packets_seen} "
+                f"time={result.execution_time_sec:.6f}s "
+                f"throughput={result.throughput_pps:.2f} pkt/s"
+            )
 
     except Exception as e:
         print(f"Error: {e}")
