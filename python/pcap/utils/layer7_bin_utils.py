@@ -1,4 +1,5 @@
 import dpkt
+import os
 
 import utils.conversion as conv
 from utils.matrix import BucketedMatrixBuilder
@@ -17,6 +18,17 @@ def get_or_create_label_id(label, label_map, next_id):
         label_map[label] = next_id
         next_id += 1
     return label_map[label], next_id
+
+def build_label_map_tsv_text(label_map):
+    """
+    Builds label_id -> label mapping as TSV text in memory.
+
+    Used for inserting the TSV directly into the tar archive.
+    """
+    lines = ["label_id\tlabel"]
+    for label, label_id in sorted(label_map.items(), key=lambda x: x[1]):
+        lines.append(f"{label_id}\t{label}")
+    return "\n".join(lines) + "\n"
 
 def write_label_map(label_map, path):
     """
@@ -329,5 +341,13 @@ def bin_gen_layer7_matrix(pcap, output_dir, subwindow, one_file_mode, label_map_
             except ValueError:
                 continue
 
-    builder.finalize()
-    write_label_map(label_map, label_map_path)
+    tsv_text = build_label_map_tsv_text(label_map)
+
+    if not os.path.isabs(label_map_path) and os.path.dirname(label_map_path) == "":
+        label_map_path = os.path.join(output_dir, label_map_path)
+
+    if one_file_mode:
+        builder.finalize()
+        write_label_map(label_map, label_map_path)
+    else:
+        builder.finalize(label_tsv_text=tsv_text)
