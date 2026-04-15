@@ -18,6 +18,22 @@ Holds network capture files and outputs for testing purposes
 - Layer 6 (Presentation) is excluded from this study because its values coincide with Layer 7 (Application).
 - Layer 1 (Physical) is excluded because PCAP files do not contain sufficient information to determine directionality (source vs. destination).
 
+## Validation Examples
+To run validation on Binary/GraphBLAS
+```
+cd python/utils
+python3 gdump.py #layer #.grb
+```
+or
+```
+cd python/utils
+python3 gdump.py #layer #.grb file_name.tsv
+```
+Where #layer is the layer you are decoding, # is the number in front of the grb file you are decoding, and file_name is the tsv file name associated with either a layer file that has strings associated with it
+
+To run validation on D4M/String
+```
+```
 ## Run Examples
 TODO
 ### Layer 7
