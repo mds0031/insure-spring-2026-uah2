@@ -3,36 +3,10 @@ import dpkt
 import utils.conversion as conv
 from utils.matrix import BucketedMatrixBuilder
 
-# -----------------------------------------------------------
-# Layer 7 Label Selection Logic
-# -----------------------------------------------------------
-def choose_app_label(http_full_uri, http_host, tls_sni, dns_name):
-    """
-    Selects the most informative Layer 7 label for a packet.
-
-    Priority order:
-    1. HTTP full URI
-    2. HTTP host
-    3. TLS SNI
-    4. DNS query name
-
-    Returns:
-        A string label or None if no L7 info exists.
-    """
-    if http_full_uri:
-        return f"HTTP_URL|{http_full_uri}"
-    if http_host:
-        return f"HTTP_HOST|{http_host}"
-    if tls_sni:
-        return f"TLS_SNI|{tls_sni}"
-    if dns_name:
-        return f"DNS_QRY|{dns_name}"
-    return None
-
 
 # -----------------------------------------------------------
 # Binary Mode Helpers (GraphBLAS)
-# -----------------------------------------------------------e
+# -----------------------------------------------------------
 def get_or_create_label_id(label, label_map, next_id):
     """
     Maps a string label to a unique integer ID.
@@ -106,7 +80,7 @@ def parse_http_fields(tcp_data):
 # DNS Parsing (UDP + TCP)
 # -----------------------------------------------------------
 def parse_dns_name(l4_data):
-     """
+    """
     Extract DNS query name from UDP or TCP DNS payload.
 
     Handles:
@@ -183,7 +157,7 @@ def parse_tls_sni(tcp_data):
 
 
 def extract_sni_from_client_hello(body):
-   """
+    """
     Parses TLS ClientHello structure to extract SNI extension.
 
     This is a manual parser to ensure compatibility across dpkt versions.
@@ -262,13 +236,16 @@ def extract_sni_from_client_hello(body):
 # -----------------------------------------------------------
 # Binary Mode Matrix Generation (GraphBLAS)
 # -----------------------------------------------------------
-def bin_gen_layer7_matrix(pcap, output_dir, subwindow, one_file_mode, label_map_path):
+def bin_gen_layer7_matrix(pcap, output_dir, subwindow, one_file_mode, label_map_path, choose_app_label):
     """
     Binary mode pipeline:
     - Parses packets using dpkt
     - Converts IPs → integer row indices
     - Converts labels → integer column indices
     - Builds GraphBLAS sparse matrices
+
+    choose_app_label is passed in from the caller so the shared
+    label-selection logic can stay in the main layer7 file.
     """
     builder = BucketedMatrixBuilder(
         window_size=subwindow,
