@@ -13,11 +13,8 @@ from textwrap import shorten
 
 file_count = 0
 
-
-
 def fmt_int(x):
     return f"{x:,}"
-
 
 def fmt_float(x):
     return f"{x:,.6f}"
@@ -34,13 +31,31 @@ def print_comparison_table(results):
         ("MAC Pairs", fmt_int(results["string"].mac_pairs), fmt_int(results["binary"].mac_pairs)),
         ("Step 1 Read (s)", fmt_float(conv.ns_to_s(results["string"].step1_read_ns)), fmt_float(conv.ns_to_s(results["binary"].step1_read_ns))),
         ("Step 2 Parse (s)", fmt_float(conv.ns_to_s(results["string"].step2_parse_ns)), fmt_float(conv.ns_to_s(results["binary"].step2_parse_ns))),
-        ("Step 3 Build (s)", fmt_float(conv.ns_to_s(results["string"].step4_build_ns)), fmt_float(conv.ns_to_s(results["binary"].step4_build_ns))),
-        ("Step 4 Save (s)", fmt_float(conv.ns_to_s(results["string"].step5_save_ns)), fmt_float(conv.ns_to_s(results["binary"].step5_save_ns))),
+        ("Step 4 Build (s)", fmt_float(conv.ns_to_s(results["string"].step4_build_ns)), fmt_float(conv.ns_to_s(results["binary"].step4_build_ns))),
+        ("Step 5 Save (s)", fmt_float(conv.ns_to_s(results["string"].step5_save_ns)), fmt_float(conv.ns_to_s(results["binary"].step5_save_ns))),
         ("Total Time (s)", fmt_float(results["string"].execution_time_sec), fmt_float(results["binary"].execution_time_sec)),
         ("Throughput (pkt/s)", fmt_float(results["string"].throughput_pps), fmt_float(results["binary"].throughput_pps)),
         ("Processor", shorten(results["string"].processor, width=26, placeholder="..."),
                       shorten(results["binary"].processor, width=26, placeholder="...")),
     ]
+
+    widths = [
+    max(len(headers[0]), max(len(r[0]) for r in rows)),
+    max(len(headers[1]), max(len(str(r[1])) for r in rows)),
+    max(len(headers[2]), max(len(str(r[2])) for r in rows)),
+    ]
+
+    def line(vals):
+        return " | ".join(str(v).ljust(widths[i]) for i, v in enumerate(vals))
+
+    sep = "-+-".join("-" * w for w in widths)
+
+    print("\nLayer 7 Benchmark Comparison")
+    print(line(headers))
+    print(sep)
+    for row in rows:
+        print(line(row))
+    print()
 
 # Generates the matrix with the pcap file
 def str_gen_layer2_matrix(pcap, output_dir, subwindow, one_file_mode, benchmark_enabled=False):
@@ -55,8 +70,6 @@ def str_gen_layer2_matrix(pcap, output_dir, subwindow, one_file_mode, benchmark_
     )
 
     generator = StringBucketedMatrixBuilder(subwindow, output_dir, one_file_mode, "layer2_str_buckets.tar")
-    packet_count = 0
-
     total_start_ns = perf_counter_ns()
 
     t_read = perf_counter_ns()
@@ -71,7 +84,6 @@ def str_gen_layer2_matrix(pcap, output_dir, subwindow, one_file_mode, benchmark_
 
     for line in lines:
         bench.packets_seen += 1
-
         t_parse = perf_counter_ns()
         parts = line.split("\t")
         if len(parts) < 2:
@@ -90,7 +102,6 @@ def str_gen_layer2_matrix(pcap, output_dir, subwindow, one_file_mode, benchmark_
         try:
             t_build = perf_counter_ns()
             generator.add_packet(eth_src, eth_dst)
-            packet_count += 1
             bench.step2_parse_ns += perf_counter_ns() - t_build
         except ValueError:
             # Still need to count the time taken to attempt to build the matrix even if there's a parsing error
@@ -102,7 +113,7 @@ def str_gen_layer2_matrix(pcap, output_dir, subwindow, one_file_mode, benchmark_
     bench.step5_save_ns += perf_counter_ns() - t_save
     bench.finalize(total_start_ns)
 
-    print("Total Packets Processed:", packet_count)
+    print("Total Packets Processed:", bench.packets_seen)
     if benchmark_enabled:
         bench.write_json("layer2_benchmark_results.json")
     return bench
@@ -110,7 +121,6 @@ def str_gen_layer2_matrix(pcap, output_dir, subwindow, one_file_mode, benchmark_
 # Generates the matrix with the pcap file using binary capture values for performance
 def bin_gen_layer2_matrix(pcap, output_dir, subwindow, one_file_mode, benchmark_enabled=False):
     generator = BucketedMatrixBuilder(subwindow, output_dir, one_file_mode, "layer2_bin_buckets.tar")
-    packet_count = 0
     bench = Layer2BenchmarkResult(
         layer=2,
         mode="binary",
@@ -126,23 +136,24 @@ def bin_gen_layer2_matrix(pcap, output_dir, subwindow, one_file_mode, benchmark_
         t_read = perf_counter_ns()
         eth = dpkt.ethernet.Ethernet(buf)
         bench.step1_read_ns += perf_counter_ns() - t_read
+        bench.packets_seen += 1
 
         # Step 2: Parse the Ethernet frame
         t_parse = perf_counter_ns()
-
+        
         if not eth.src or not eth.dst:
             bench.step2_parse_ns += perf_counter_ns() - t_parse
             continue
 
         src_mac_int = int.from_bytes(eth.src, 'big')
         dst_mac_int = int.from_bytes(eth.dst, 'big')
+        bench.mac_pairs += 1
         bench.step2_parse_ns += perf_counter_ns() - t_parse
         
         # Step 3: Build the GraphBLAS matrix
         t_build = perf_counter_ns()
         generator.add_packet(src_mac_int, dst_mac_int)
         bench.step4_build_ns += perf_counter_ns() - t_build
-        packet_count += 1
 
     # Step 4: Finalize and save the matrix
     t_save = perf_counter_ns()
@@ -151,6 +162,7 @@ def bin_gen_layer2_matrix(pcap, output_dir, subwindow, one_file_mode, benchmark_
 
     # Finalize benchmark results
     bench.finalize(total_start_ns)
+    print(fmt_float(bench.throughput_pps))
     if benchmark_enabled:
         bench.write_json("layer2_benchmark_results.json")
     return bench
