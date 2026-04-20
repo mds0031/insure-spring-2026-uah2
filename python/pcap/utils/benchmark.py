@@ -104,4 +104,19 @@ class Layer2BenchmarkResult(BaseBenchmarkResult):
     unique_src_macs: int = 0
     unique_dst_macs: int = 0
 
+@dataclass
+class Layer3BenchmarkResult(BaseBenchmarkResult):
+    """Benchmark results container for Layer 3 (IP) processing."""
+    layer: int = 3
+    mode: str = ""
+    pcap: str = ""
+    output_dir: str = ""
+    window_size: int = 0
+    one_file_mode: bool = False
 
+    packets_seen: int = 0
+    valid_packets: int = 0
+    ip_pairs: int = 0
+    unique_src_ips: int = 0
+    unique_dst_ips: int = 0
+    bucket_prefix: int = 32
