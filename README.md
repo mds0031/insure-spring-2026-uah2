@@ -81,9 +81,32 @@ cd python/pcap
 ```
 ## Layer 2
 ```
-python3 layer2_pcap2grb.py \  
-  -i ../../tests/http.cap \  
-  -o ../../test/test_outs/layer2.grb
+python3 pcap/layer2_pcap2grb.py
+  -i ../tests/http.cap
+  -o ../test/test_outs/layer2.grb
+```
+### One-file Binary mode
+```
+python3 pcap/layer2_matrix.py
+  -i ../tests/http.cap
+  -o ../tests/test_outs/layer2/one_file
+  -b
+  -O
+```
+### Binary mode
+```
+python3 pcap/layer2_matrix.py
+  -i ../tests/http.cap
+  -o ../tests/test_outs/layer2
+  -b \
+  -w 1
+```
+### String mode
+```
+python3 pcap/layer2_matrix.py
+  -i ../tests/http.cap
+  -o ../tests/test_outs/layer2
+  -w 1
 ```
 ## Layer 3
 ```
