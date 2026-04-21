@@ -69,7 +69,7 @@ def str_gen_layer2_matrix(pcap, output_dir, subwindow, one_file_mode, benchmark_
         one_file_mode=one_file_mode
     )
 
-    generator = StringBucketedMatrixBuilder(subwindow, output_dir, one_file_mode, "layer2_str_buckets.tar")
+    generator = StringBucketedMatrixBuilder(subwindow, output_dir, one_file_mode, "layer2_str_buckets.tar", "layer2.assoc.pkl")
     total_start_ns = perf_counter_ns()
 
     t_read = perf_counter_ns()
@@ -120,7 +120,7 @@ def str_gen_layer2_matrix(pcap, output_dir, subwindow, one_file_mode, benchmark_
 
 # Generates the matrix with the pcap file using binary capture values for performance
 def bin_gen_layer2_matrix(pcap, output_dir, subwindow, one_file_mode, benchmark_enabled=False):
-    generator = BucketedMatrixBuilder(subwindow, output_dir, one_file_mode, "layer2_bin_buckets.tar")
+    generator = BucketedMatrixBuilder(subwindow, output_dir, one_file_mode, "layer2_bin_buckets.tar", "layer2.grb")
     bench = Layer2BenchmarkResult(
         layer=2,
         mode="binary",
@@ -162,7 +162,6 @@ def bin_gen_layer2_matrix(pcap, output_dir, subwindow, one_file_mode, benchmark_
 
     # Finalize benchmark results
     bench.finalize(total_start_ns)
-    print(fmt_float(bench.throughput_pps))
     if benchmark_enabled:
         bench.write_json("layer2_benchmark_results.json")
     return bench
@@ -200,14 +199,14 @@ def main():
         print(f"Processing Layer 2 from {input_pcap}")
         if benchmark:
             print("Benchmarking enabled. Running both string and binary modes for comparison.")
-            str_result = str_gen_layer2_matrix(input_pcap, string_out, window_size, one_file_mode, benchmark_enabled=True)
-            bin_result = bin_gen_layer2_matrix(input_pcap, binary_out, window_size, one_file_mode, benchmark_enabled=True)
+            str_result = str_gen_layer2_matrix(input_pcap, string_out, window_size, one_file_mode, True)
+            bin_result = bin_gen_layer2_matrix(input_pcap, binary_out, window_size, one_file_mode, True)
         elif performance_mode:
             print("Using binary capture values for performance.")
-            bin_result = bin_gen_layer2_matrix(input_pcap, output_dir, window_size, one_file_mode)
+            bin_result = bin_gen_layer2_matrix(input_pcap, output_dir, window_size, one_file_mode, False)
         else:            
             print("Using string capture values for easier debugging.")
-            str_result = str_gen_layer2_matrix(input_pcap, output_dir, window_size, one_file_mode, benchmark_enabled=True)
+            str_result = str_gen_layer2_matrix(input_pcap, output_dir, window_size, one_file_mode, False)
 
         print("Finished!")
         if benchmark:

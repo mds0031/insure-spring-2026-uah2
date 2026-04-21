@@ -11,11 +11,12 @@ except ImportError:
     D4M = None
 
 class BucketedMatrixBuilder:
-    def __init__(self, window_size, output_dir, one_file_mode, tar_name="layer7_bin_buckets.tar"):
+    def __init__(self, window_size, output_dir, one_file_mode, tar_name="layer7_bin_buckets.tar", one_file_name="layer7.grb"):
         self.window_size = window_size
         self.output_dir = output_dir
         self.one_file_mode = one_file_mode
         self.tar_name = tar_name
+        self.one_file_name = one_file_name
         self.matrix_count = 0
         self.index = 0
 
@@ -83,7 +84,7 @@ class BucketedMatrixBuilder:
             dup_op=binary.plus
         )
 
-        output_path = os.path.join(self.output_dir, "layer7.grb")
+        output_path = os.path.join(self.output_dir, self.one_file_name)
         with open(output_path, "wb") as f:
             f.write(matrix.ss.serialize())
 
@@ -112,11 +113,12 @@ class BucketedMatrixBuilder:
 
 # This generator is for string-based matrices where we want to keep the original MAC address strings for D4M-friendly output
 class StringBucketedMatrixBuilder:
-    def __init__(self, window_size, output_dir, one_file_mode, tar_name="layer7_str_buckets.tar"):
+    def __init__(self, window_size, output_dir, one_file_mode, tar_name="layer7_str_buckets.tar", one_file_name="layer7.assoc.pkl"):
         self.window_size = window_size
         self.output_dir = output_dir
         self.one_file_mode = one_file_mode
         self.tar_name = tar_name
+        self.one_file_name = one_file_name
         self.matrix_count = 0
         self.index = 0
 
@@ -184,7 +186,7 @@ class StringBucketedMatrixBuilder:
             return
 
         A = self._build_assoc()
-        output_path = os.path.join(self.output_dir, "layer7.assoc.pkl")
+        output_path = os.path.join(self.output_dir, self.one_file_name)
         with open(output_path, "wb") as f:
             pickle.dump(A, f, protocol=pickle.HIGHEST_PROTOCOL)
 
