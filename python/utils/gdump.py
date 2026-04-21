@@ -5,15 +5,17 @@ from pathlib import Path
 import tarfile
 from datetime import datetime
 
-
 def print_help():
     print("Python script that dumps the GraphBLAS matrix from a GraphBLAS file for this project")
     print("Usage:")
     print("\tpython gdump.py 2 {graphblas .grb or .tar file}")
+    print("\tpython gdump.py 3 {graphblas .grb or .tar file}")
     print("\tpython gdump.py 7 {graphblas .grb or .tar file} {label map tsv}")
     print("Examples:")
     print("\tpython gdump.py 2 0.grb")
     print("\tpython gdump.py 2 matrices.tar")
+    print("\tpython gdump.py 3 0.grb")
+    print("\tpython gdump.py 3 layer3_bin_buckets.tar")
     print("\tpython gdump.py 7 0.grb layer7_labels.tsv")
     print("\tpython gdump.py 7 matrices.tar layer7_labels.tsv")
 
@@ -67,6 +69,36 @@ def gdump_layer2(matrix):
             s = int_to_mac(src)
             d = int_to_mac(dst)
             print(s, d, v)
+
+    print("total packets:", total)
+
+
+def gdump_layer3(matrix):
+    """
+    Dump Layer 3 GraphBLAS matrix entries in readable form.
+
+    Row index  -> source IP (IPv4 or IPv6)
+    Col index  -> destination IP (IPv4 or IPv6)
+    Value      -> count
+    """
+    matrix_dict = matrix.to_dicts()
+    total = 0
+
+    for src, row in matrix_dict.items():
+        try:
+            src_ip = int_to_ip(src)
+        except ValueError:
+            src_ip = f"<bad-ip:{src}>"
+
+        for dst, count in row.items():
+            try:
+                dst_ip = int_to_ip(dst)
+            except ValueError:
+                dst_ip = f"<bad-ip:{dst}>"
+
+            v = int(count)
+            total += v
+            print(src_ip, dst_ip, v)
 
     print("total packets:", total)
 
@@ -172,6 +204,7 @@ def get_matrix_from_grb(filename):
 
 gdump_dict = {
     "2": gdump_layer2,
+    "3": gdump_layer3,
     "7": gdump_layer7
 }
 
@@ -192,6 +225,9 @@ if __name__ == "__main__":
     matrix = get_matrix_from_grb(grb_file)
 
     if layer == "2":
+        gdump_dict[layer](matrix)
+
+    elif layer == "3":
         gdump_dict[layer](matrix)
 
     elif layer == "7":
