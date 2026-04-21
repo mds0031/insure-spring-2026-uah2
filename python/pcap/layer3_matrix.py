@@ -1,18 +1,16 @@
 import sys
 import argparse
 import os
-from time import perf_counter_ns
 from textwrap import shorten
 
-import dpkt
-
 import utils.conversion as conv
-import utils.tshark_utils as tshark_utils
-from utils.matrix import BucketedMatrixBuilder, StringBucketedMatrixBuilder
-from utils.benchmark import Layer3BenchmarkResult
+from utils.tshark_utils import check_tshark
+from utils.layer3_str_utils import str_gen_layer3_matrix
+from utils.layer3_bin_utils import bin_gen_layer3_matrix
 
 
-#Formatting 
+# Formatting helpers
+
 def fmt_int(x):
     return f"{x:,}"
 
@@ -21,26 +19,7 @@ def fmt_float(x):
     return f"{x:,.6f}"
 
 
-#Layer 3 subnet bucketing
-def bucket_ip_int(ip_int, prefix):
-    """Apply a subnet prefix mask to an integer IP address."""
-    if prefix == 32:
-        return ip_int
-    mask = (0xFFFFFFFF << (32 - prefix)) & 0xFFFFFFFF
-    return ip_int & mask
-
-
-def bucket_ip_str(ip_str, prefix):
-    """Apply a subnet prefix mask to a dotted-quad IP string."""
-    if prefix == 32:
-        return ip_str
-    masked = bucket_ip_int(conv.ip_to_int(ip_str), prefix)
-    return f"{(masked >> 24) & 255}.{(masked >> 16) & 255}.{(masked >> 8) & 255}.{masked & 255}"
-
-
-
 # Benchmark comparison table
-
 def print_comparison_table(results):
     headers = ["Metric", "String", "Binary"]
 
@@ -81,164 +60,8 @@ def print_comparison_table(results):
 
 
 # -----------------------------------------------------------
-# String Mode (tshark + D4M)
+# Main
 # -----------------------------------------------------------
-def str_gen_layer3_matrix(pcap, output_dir, window, one_file_mode, bucket_prefix, benchmark_enabled=False):
-    generator = StringBucketedMatrixBuilder(
-        window, output_dir, one_file_mode, "layer3_str_buckets.tar"
-    )
-
-    bench = Layer3BenchmarkResult(
-        layer=3,
-        mode="string",
-        pcap=pcap,
-        output_dir=output_dir,
-        window_size=window,
-        one_file_mode=one_file_mode,
-        bucket_prefix=bucket_prefix,
-    )
-
-    src_set = set()
-    dst_set = set()
-
-    total_start_ns = perf_counter_ns()
-
-    t_read = perf_counter_ns()
-    lines = tshark_utils.run_tshark([
-        "tshark", "-r", pcap,
-        "-T", "fields",
-        "-e", "ip.src",
-        "-e", "ip.dst",
-    ])
-    bench.step1_read_ns += perf_counter_ns() - t_read
-
-    for line in lines:
-        bench.packets_seen += 1
-
-        t_parse = perf_counter_ns()
-        parts = line.split("\t")
-        while len(parts) < 2:
-            parts.append("")
-
-        ip_src, ip_dst = [p.strip() for p in parts[:2]]
-
-        if not ip_src or not ip_dst:
-            bench.step2_parse_ns += perf_counter_ns() - t_parse
-            continue
-
-        try:
-            src_bucketed = bucket_ip_str(ip_src, bucket_prefix)
-            dst_bucketed = bucket_ip_str(ip_dst, bucket_prefix)
-        except ValueError:
-            bench.step2_parse_ns += perf_counter_ns() - t_parse
-            continue
-
-        bench.valid_packets += 1
-        bench.step2_parse_ns += perf_counter_ns() - t_parse
-
-        t_build = perf_counter_ns()
-        generator.add_packet(src_bucketed, dst_bucketed)
-        src_set.add(src_bucketed)
-        dst_set.add(dst_bucketed)
-        bench.ip_pairs += 1
-        bench.step4_build_ns += perf_counter_ns() - t_build
-
-    t_save = perf_counter_ns()
-    generator.finalize()
-    bench.step5_save_ns += perf_counter_ns() - t_save
-
-    bench.unique_src_ips = len(src_set)
-    bench.unique_dst_ips = len(dst_set)
-    bench.finalize(total_start_ns)
-
-    print("Total Packets Processed:", bench.packets_seen)
-    if benchmark_enabled:
-        bench.write_json("layer3_string_benchmark.json")
-    return bench
-
-
-# Binary Mode (dpkt + GraphBLAS)
-def bin_gen_layer3_matrix(pcap, output_dir, window, one_file_mode, bucket_prefix, benchmark_enabled=False):
-    generator = BucketedMatrixBuilder(
-        window, output_dir, one_file_mode, "layer3_bin_buckets.tar"
-    )
-
-    bench = Layer3BenchmarkResult(
-        layer=3,
-        mode="binary",
-        pcap=pcap,
-        output_dir=output_dir,
-        window_size=window,
-        one_file_mode=one_file_mode,
-        bucket_prefix=bucket_prefix,
-    )
-
-    src_set = set()
-    dst_set = set()
-
-    total_start_ns = perf_counter_ns()
-
-    with open(pcap, "rb") as f:
-        reader = dpkt.pcap.Reader(f)
-
-        while True:
-            t_read = perf_counter_ns()
-            try:
-                _, buf = next(reader)
-            except StopIteration:
-                break
-            bench.step1_read_ns += perf_counter_ns() - t_read
-            bench.packets_seen += 1
-
-            t_parse = perf_counter_ns()
-
-            try:
-                eth = dpkt.ethernet.Ethernet(buf)
-            except (dpkt.dpkt.NeedData, dpkt.dpkt.UnpackError):
-                bench.step2_parse_ns += perf_counter_ns() - t_parse
-                continue
-
-            ip = eth.data
-            if not isinstance(ip, dpkt.ip.IP):
-                bench.step2_parse_ns += perf_counter_ns() - t_parse
-                continue
-
-            if not ip.src or not ip.dst:
-                bench.step2_parse_ns += perf_counter_ns() - t_parse
-                continue
-
-            try:
-                src_int = bucket_ip_int(int.from_bytes(ip.src, "big"), bucket_prefix)
-                dst_int = bucket_ip_int(int.from_bytes(ip.dst, "big"), bucket_prefix)
-            except (ValueError, TypeError):
-                bench.step2_parse_ns += perf_counter_ns() - t_parse
-                continue
-
-            bench.valid_packets += 1
-            bench.step2_parse_ns += perf_counter_ns() - t_parse
-
-            t_build = perf_counter_ns()
-            generator.add_packet(src_int, dst_int)
-            src_set.add(src_int)
-            dst_set.add(dst_int)
-            bench.ip_pairs += 1
-            bench.step4_build_ns += perf_counter_ns() - t_build
-
-    t_save = perf_counter_ns()
-    generator.finalize()
-    bench.step5_save_ns += perf_counter_ns() - t_save
-
-    bench.unique_src_ips = len(src_set)
-    bench.unique_dst_ips = len(dst_set)
-    bench.finalize(total_start_ns)
-
-    print("Total Packets Processed:", bench.packets_seen)
-    if benchmark_enabled:
-        bench.write_json("layer3_binary_benchmark.json")
-    return bench
-
-
-#main
 def main():
     parser = argparse.ArgumentParser(
         description="Construct Layer 3 matrices from a PCAP: string mode outputs D4M-compatible buckets, binary mode outputs GraphBLAS buckets."
@@ -280,7 +103,7 @@ def main():
 
         if benchmark:
             print("Benchmarking enabled. Running both string and binary modes for comparison.")
-            tshark_utils.check_tshark()
+            check_tshark()
             str_result = str_gen_layer3_matrix(
                 input_pcap, string_out, window_size, one_file_mode, bucket_prefix, benchmark_enabled=True
             )
@@ -293,7 +116,7 @@ def main():
                 input_pcap, output_dir, window_size, one_file_mode, bucket_prefix
             )
         else:
-            tshark_utils.check_tshark()
+            check_tshark()
             print("Using string capture values for easier debugging.")
             str_result = str_gen_layer3_matrix(
                 input_pcap, output_dir, window_size, one_file_mode, bucket_prefix
