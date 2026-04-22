@@ -367,7 +367,7 @@ def bin_gen_layer7_matrix(pcap, output_dir, subwindow, one_file_mode, label_map_
             except ValueError:
                 pass
             finally:
-                bench.step4_build_ns += perf_counter_ns() - t_build
+                bench.step3_build_ns += perf_counter_ns() - t_build
 
     t_save = perf_counter_ns()
 
@@ -382,7 +382,7 @@ def bin_gen_layer7_matrix(pcap, output_dir, subwindow, one_file_mode, label_map_
     else:
         builder.finalize(label_tsv_text=tsv_text)
 
-    bench.step5_save_ns += perf_counter_ns() - t_save
+    bench.step4_save_ns += perf_counter_ns() - t_save
     bench.finalize(total_start_ns)
 
     if benchmark:
