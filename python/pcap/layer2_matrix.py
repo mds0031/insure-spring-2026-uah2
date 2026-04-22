@@ -1,17 +1,12 @@
-from datetime import datetime
 import sys
 import argparse
 import os
-from time import perf_counter_ns
-
+from textwrap import shorten
 from utils.layer2_bin_utils import bin_gen_layer2_matrix
 from utils.layer2_str_utils import str_gen_layer2_matrix
 import utils.conversion as conv
 import utils.tshark_utils as tshark_utils
-from textwrap import shorten
 
-
-file_count = 0
 
 def fmt_int(x):
     return f"{x:,}"
