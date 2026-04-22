@@ -58,9 +58,12 @@ def print_comparison_table(results):
         print(line(row))
     print()
 
-# Main function to run the script
 def main():
-    """Main entry point for the script. Parses command-line arguments and runs the appropriate matrix generation and benchmarking."""
+    """
+        Main entry point for the script. 
+        Parses command-line arguments and runs the appropriate
+        matrix generation and benchmarking.
+    """
     parser = argparse.ArgumentParser()
     # Required arguments
     parser.add_argument("-i", "--pcap", required=True, help="Input PCAP file")
