@@ -1,0 +1,16 @@
+{
+  "layer": 4,
+  "mode": "string",
+  "pcap": "..\\..\\tests\\http.cap",
+  "output_dir": "c:\\VS PY311\\tests\\test_outs\\layer4_benchmark\\string",
+  "window_size": 131072,
+  "one_file_mode": false,
+  "packets_seen": 43,
+  "valid_packets": 43,
+  "ip_port_pairs": 43,
+  "unique_src_endpoints": 6,
+  "unique_dst_endpoints": 6,
+  "bucket_prefix": 32,
+  "execution_time_sec": 0.1709737,
+  "throughput_pps": 251.5006694012003
+}
