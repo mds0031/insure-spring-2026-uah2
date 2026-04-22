@@ -17,8 +17,8 @@ class BaseBenchmarkResult:
 
     step1_read_ns: int = 0
     step2_parse_ns: int = 0
-    step4_build_ns: int = 0
-    step5_save_ns: int = 0
+    step3_build_ns: int = 0
+    step4_save_ns: int = 0
 
     total_ns: int = 0
 
@@ -78,8 +78,8 @@ class Layer7BenchmarkResult(BaseBenchmarkResult):
 
     step1_read_ns: int = 0
     step2_parse_ns: int = 0
-    step4_build_ns: int = 0
-    step5_save_ns: int = 0
+    step3_build_ns: int = 0
+    step4_save_ns: int = 0
 
     total_ns: int = 0
 
