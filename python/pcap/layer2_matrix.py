@@ -110,7 +110,7 @@ def str_gen_layer2_matrix(pcap, output_dir, subwindow, one_file_mode, benchmark_
 
     t_save = perf_counter_ns()
     generator.finalize()
-    bench.step5_save_ns += perf_counter_ns() - t_save
+    bench.step4_save_ns += perf_counter_ns() - t_save
     bench.finalize(total_start_ns)
 
     print("Total Packets Processed:", bench.packets_seen)
@@ -153,12 +153,12 @@ def bin_gen_layer2_matrix(pcap, output_dir, subwindow, one_file_mode, benchmark_
         # Step 3: Build the GraphBLAS matrix
         t_build = perf_counter_ns()
         generator.add_packet(src_mac_int, dst_mac_int)
-        bench.step4_build_ns += perf_counter_ns() - t_build
+        bench.step3_build_ns += perf_counter_ns() - t_build
 
     # Step 4: Finalize and save the matrix
     t_save = perf_counter_ns()
     generator.finalize()
-    bench.step5_save_ns += perf_counter_ns() - t_save
+    bench.step4_save_ns += perf_counter_ns() - t_save
 
     # Finalize benchmark results
     bench.finalize(total_start_ns)
