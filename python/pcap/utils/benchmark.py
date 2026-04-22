@@ -120,3 +120,20 @@ class Layer3BenchmarkResult(BaseBenchmarkResult):
     unique_src_ips: int = 0
     unique_dst_ips: int = 0
     bucket_prefix: int = 32
+
+@dataclass
+class Layer4BenchmarkResult(BaseBenchmarkResult):
+    """Benchmark results container for Layer 4 (IP:Port) processing."""
+    layer: int = 4
+    mode: str = ""
+    pcap: str = ""
+    output_dir: str = ""
+    window_size: int = 0
+    one_file_mode: bool = False
+ 
+    packets_seen: int = 0
+    valid_packets: int = 0
+    ip_port_pairs: int = 0
+    unique_src_endpoints: int = 0
+    unique_dst_endpoints: int = 0
+    bucket_prefix: int = 32
