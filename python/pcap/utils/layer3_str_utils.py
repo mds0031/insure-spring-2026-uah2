@@ -76,11 +76,11 @@ def str_gen_layer3_matrix(pcap, output_dir, window, one_file_mode, bucket_prefix
         src_set.add(src_bucketed)
         dst_set.add(dst_bucketed)
         bench.ip_pairs += 1
-        bench.step4_build_ns += perf_counter_ns() - t_build
+        bench.step3_build_ns += perf_counter_ns() - t_build
 
     t_save = perf_counter_ns()
     generator.finalize()
-    bench.step5_save_ns += perf_counter_ns() - t_save
+    bench.step4_save_ns += perf_counter_ns() - t_save
 
     bench.unique_src_ips = len(src_set)
     bench.unique_dst_ips = len(dst_set)
