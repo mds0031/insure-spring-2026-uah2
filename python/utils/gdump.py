@@ -268,13 +268,7 @@ if __name__ == "__main__":
 
     matrix = get_matrix_from_grb(grb_file)
 
-    if layer == "2":
-        gdump_dict[layer](matrix)
-
-    elif layer == "3":
-        gdump_dict[layer](matrix)
-
-    elif layer == "4":
+    if layer in ("2", "3", "4"):
         gdump_dict[layer](matrix)
 
     elif layer == "7":
