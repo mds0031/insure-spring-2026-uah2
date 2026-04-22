@@ -83,11 +83,11 @@ def str_gen_layer7_matrix(pcap, window, output, one_file_mode, choose_app_label,
 
         t_build = perf_counter_ns()
         builder.add_packet(ip_src, app_label)
-        bench.step4_build_ns += perf_counter_ns() - t_build
+        bench.step3_build_ns += perf_counter_ns() - t_build
 
     t_save = perf_counter_ns()
     builder.finalize()
-    bench.step5_save_ns += perf_counter_ns() - t_save
+    bench.step4_save_ns += perf_counter_ns() - t_save
 
     bench.finalize(total_start_ns)
 
