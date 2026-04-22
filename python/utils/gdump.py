@@ -274,6 +274,9 @@ if __name__ == "__main__":
     elif layer == "3":
         gdump_dict[layer](matrix)
 
+    elif layer == "4":
+        gdump_dict[layer](matrix)
+
     elif layer == "7":
         if len(sys.argv) != 4:
             print("Layer 7 requires a label map TSV file.")
