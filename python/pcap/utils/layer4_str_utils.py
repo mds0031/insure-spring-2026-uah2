@@ -104,12 +104,12 @@ def str_gen_layer4_matrix(
         # Step 4: accumulate into bucketed D4M matrix
         t_build = perf_counter_ns()
         generator.add_packet(src_label, dst_label)
-        bench.step4_build_ns += perf_counter_ns() - t_build
+        bench.step3_build_ns += perf_counter_ns() - t_build
 
     # Step 5: flush and serialize
     t_save = perf_counter_ns()
     generator.finalize()
-    bench.step5_save_ns += perf_counter_ns() - t_save
+    bench.step4_save_ns += perf_counter_ns() - t_save
 
     bench.unique_src_endpoints = len(src_set)
     bench.unique_dst_endpoints = len(dst_set)
