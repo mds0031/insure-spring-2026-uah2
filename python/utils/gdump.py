@@ -10,12 +10,15 @@ def print_help():
     print("Usage:")
     print("\tpython gdump.py 2 {graphblas .grb or .tar file}")
     print("\tpython gdump.py 3 {graphblas .grb or .tar file}")
+    print("\tpython gdump.py 4 {graphblas .grb or .tar file}")
     print("\tpython gdump.py 7 {graphblas .grb or .tar file} {label map tsv}")
     print("Examples:")
     print("\tpython gdump.py 2 0.grb")
     print("\tpython gdump.py 2 matrices.tar")
     print("\tpython gdump.py 3 0.grb")
     print("\tpython gdump.py 3 layer3_bin_buckets.tar")
+    print("\tpython gdump.py 4 0.grb")
+    print("\tpython gdump.py 4 layer4_bin_buckets.tar")
     print("\tpython gdump.py 7 0.grb layer7_labels.tsv")
     print("\tpython gdump.py 7 matrices.tar layer7_labels.tsv")
 
@@ -56,6 +59,16 @@ def int_to_ip(x):
         return str(ipaddress.IPv6Address(x))
 
     raise ValueError("value out of IP range (0..2^128-1)")
+
+
+def int_to_ip_port(x):
+    port = x & 0xFFFF
+    ip_int = x >> 16
+    try:
+        ip_str = int_to_ip(ip_int)
+    except ValueError:
+        ip_str = f"<bad-ip:{ip_int}>"
+    return f"{ip_str}:{port}"
 
 
 def gdump_layer2(matrix):
@@ -99,6 +112,36 @@ def gdump_layer3(matrix):
             v = int(count)
             total += v
             print(src_ip, dst_ip, v)
+
+    print("total packets:", total)
+
+
+def gdump_layer4(matrix):
+    """
+    Dump Layer 4 GraphBLAS matrix entries in readable form.
+
+    Row index  -> source IP:port
+    Col index  -> destination IP:port
+    Value      -> count
+    """
+    matrix_dict = matrix.to_dicts()
+    total = 0
+
+    for src, row in matrix_dict.items():
+        try:
+            src_str = int_to_ip_port(src)
+        except Exception:
+            src_str = f"<bad-src:{src}>"
+
+        for dst, count in row.items():
+            try:
+                dst_str = int_to_ip_port(dst)
+            except Exception:
+                dst_str = f"<bad-dst:{dst}>"
+
+            v = int(count)
+            total += v
+            print(src_str, dst_str, v)
 
     print("total packets:", total)
 
@@ -205,6 +248,7 @@ def get_matrix_from_grb(filename):
 gdump_dict = {
     "2": gdump_layer2,
     "3": gdump_layer3,
+    "4": gdump_layer4,
     "7": gdump_layer7
 }
 
