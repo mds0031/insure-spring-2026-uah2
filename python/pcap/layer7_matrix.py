@@ -151,10 +151,9 @@ def main() -> None:
                 input_pcap,
                 string_out,
                 window_size,
-                string_out,
                 one_file_mode,
                 choose_app_label,
-                benchmark=True,
+                True,
             )
             bin_result = bin_gen_layer7_matrix(
                 input_pcap,
@@ -163,7 +162,7 @@ def main() -> None:
                 one_file_mode,
                 label_map_path,
                 choose_app_label,
-                benchmark=True,
+                True,
             )
         elif args.binary:
             print(f"Generating Layer 7 GraphBLAS buckets in binary mode from PCAP file: {input_pcap}")
@@ -174,7 +173,7 @@ def main() -> None:
                 one_file_mode,
                 label_map_path,
                 choose_app_label,
-                benchmark
+                False
             )
         else:
             check_tshark()
@@ -185,7 +184,7 @@ def main() -> None:
                 window_size,
                 one_file_mode,
                 choose_app_label,
-                benchmark
+                False
             )
         
         print("Finished!")
@@ -199,12 +198,12 @@ def main() -> None:
             print_comparison_table(results)
 
             print("Benchmark JSON files written to:")
-            print(f"  {os.path.join(string_out, 'layer2_string_benchmark.json')}")
-            print(f"  {os.path.join(binary_out, 'layer2_binary_benchmark.json')}")
+            print(f"  {os.path.join(string_out, 'layer7_string_benchmark.json')}")
+            print(f"  {os.path.join(binary_out, 'layer7_binary_benchmark.json')}")
 
     except Exception as e:
-        print(f"Error: {e}")
-        sys.exit(1)
+       print(f"Error: {e}")
+       sys.exit(1)
 
 if __name__ == "__main__":
     main()
