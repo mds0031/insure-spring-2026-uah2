@@ -10,7 +10,7 @@ from utils.benchmark import Layer7BenchmarkResult
 # -----------------------------------------------------------
 # Binary Mode Helpers (GraphBLAS)
 # -----------------------------------------------------------
-def get_or_create_label_id(label, label_map, next_id):
+def get_or_create_label_id(label: str, label_map: dict, next_id: int) -> tuple[int, int]:
     """
     Maps a string label to a unique integer ID.
 
@@ -21,7 +21,7 @@ def get_or_create_label_id(label, label_map, next_id):
         next_id += 1
     return label_map[label], next_id
 
-def build_label_map_tsv_text(label_map):
+def build_label_map_tsv_text(label_map: dict) -> str:
     """
     Builds label_id -> label mapping as TSV text in memory.
 
@@ -32,7 +32,7 @@ def build_label_map_tsv_text(label_map):
         lines.append(f"{label_id}\t{label}")
     return "\n".join(lines) + "\n"
 
-def write_label_map(label_map, path):
+def write_label_map(label_map: dict, path: str) -> None:
     """
     Writes label_id -> label mapping to a TSV file.
 
@@ -46,7 +46,7 @@ def write_label_map(label_map, path):
 # -----------------------------------------------------------
 # Safe Decoding Utility
 # -----------------------------------------------------------
-def safe_decode(value):
+def safe_decode(value: any) -> str:
     """
     Safely decodes bytes to UTF-8 string.
 
@@ -64,7 +64,7 @@ def safe_decode(value):
 # -----------------------------------------------------------
 # HTTP Parsing
 # -----------------------------------------------------------
-def parse_http_fields(tcp_data):
+def parse_http_fields(tcp_data: bytes) -> tuple[str, str]:
     """
     Extract HTTP full URI and host from TCP payload.
 
@@ -93,7 +93,7 @@ def parse_http_fields(tcp_data):
 # -----------------------------------------------------------
 # DNS Parsing (UDP + TCP)
 # -----------------------------------------------------------
-def parse_dns_name(l4_data):
+def parse_dns_name(l4_data: bytes) -> str:
     """
     Extract DNS query name from UDP or TCP DNS payload.
 
@@ -123,7 +123,7 @@ def parse_dns_name(l4_data):
 # -----------------------------------------------------------
 # TLS SNI Parsing
 # -----------------------------------------------------------
-def parse_tls_sni(tcp_data):
+def parse_tls_sni(tcp_data: bytes) -> str:
     """
     Extract Server Name Indication (SNI) from TLS ClientHello.
 
@@ -170,7 +170,7 @@ def parse_tls_sni(tcp_data):
     return ""
 
 
-def extract_sni_from_client_hello(body):
+def extract_sni_from_client_hello(body: bytes) -> str:
     """
     Parses TLS ClientHello structure to extract SNI extension.
 
@@ -258,7 +258,7 @@ def _tally_label_type(app_label: str, bench: Layer7BenchmarkResult) -> None:
 # -----------------------------------------------------------
 # Binary Mode Matrix Generation (GraphBLAS)
 # -----------------------------------------------------------
-def bin_gen_layer7_matrix(pcap, output_dir, subwindow, one_file_mode, label_map_path, choose_app_label, benchmark=False):
+def bin_gen_layer7_matrix(pcap: str, output_dir: str, subwindow: int, one_file_mode: bool, label_map_path: str, choose_app_label, benchmark: bool = False) -> Layer7BenchmarkResult:
     """
     Binary mode pipeline:
     - Parses packets using dpkt

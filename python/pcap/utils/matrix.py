@@ -11,7 +11,13 @@ except ImportError:
     D4M = None
 
 class BucketedMatrixBuilder:
-    def __init__(self, window_size, output_dir, one_file_mode, tar_name="layer7_bin_buckets.tar", one_file_name="layer7.grb"):
+    def __init__(self, window_size: int, output_dir: str, one_file_mode: bool, tar_name: str = "layer7_bin_buckets.tar", one_file_name: str = "layer7.grb"):
+        """
+        Binary-based bucketed matrix builder for GraphBLAS output:
+        - Stores source and destination nodes as integers
+        - Builds GraphBLAS matrices for each bucket
+        - Writes buckets to a tar file or a single file based on configuration
+        """
         self.window_size = window_size
         self.output_dir = output_dir
         self.one_file_mode = one_file_mode
@@ -34,7 +40,7 @@ class BucketedMatrixBuilder:
             tar_path = os.path.join(self.output_dir, self.tar_name)
             self.tar = tarfile.open(tar_path, "w")
 
-    def add_packet(self, src, dst):
+    def add_packet(self, src: int, dst: int) -> None:
         if self.one_file_mode:
             self.src_nodes.append(src)
             self.dst_nodes.append(dst)
@@ -53,7 +59,7 @@ class BucketedMatrixBuilder:
                 self.vals = np.empty(self.window_size, dtype=int)
                 self.index = 0
 
-    def write_bucket_to_tar(self):
+    def write_bucket_to_tar(self) -> None:
         if self.index == 0:
             return
 
@@ -73,7 +79,7 @@ class BucketedMatrixBuilder:
 
         self.matrix_count += 1
 
-    def write_single_file(self):
+    def write_single_file(self) -> None:
         if self.index == 0:
             return
 
@@ -90,7 +96,7 @@ class BucketedMatrixBuilder:
 
         matrix.clear()
 
-    def add_text_file_to_tar(self, arcname, text):
+    def add_text_file_to_tar(self, arcname: str, text: str) -> None:
         if self.tar is None:
             return
         data = text.encode("utf-8")
@@ -98,7 +104,7 @@ class BucketedMatrixBuilder:
         info.size = len(data)
         self.tar.addfile(info, io.BytesIO(data))
 
-    def finalize(self, label_tsv_text=None):
+    def finalize(self, label_tsv_text: str = None) -> None:
         if self.one_file_mode:
             self.write_single_file()
         else:
@@ -111,9 +117,14 @@ class BucketedMatrixBuilder:
             self.tar.close()
 
 
-# This generator is for string-based matrices where we want to keep the original MAC address strings for D4M-friendly output
 class StringBucketedMatrixBuilder:
-    def __init__(self, window_size, output_dir, one_file_mode, tar_name="layer7_str_buckets.tar", one_file_name="layer7.assoc.pkl"):
+    """
+    String-based bucketed matrix builder for D4M-compatible output:
+    - Stores source and destination nodes as strings
+    - Builds D4M associative arrays for each bucket
+    - Writes buckets to a tar file or a single file based on configuration
+    """
+    def __init__(self, window_size: int, output_dir: str, one_file_mode: bool, tar_name: str = "layer7_str_buckets.tar", one_file_name: str = "layer7.assoc.pkl"):
         self.window_size = window_size
         self.output_dir = output_dir
         self.one_file_mode = one_file_mode
@@ -134,7 +145,7 @@ class StringBucketedMatrixBuilder:
             tar_path = os.path.join(self.output_dir, self.tar_name)
             self.tar = tarfile.open(tar_path, "w")
 
-    def __sanitize_d4m_key(self, value):
+    def __sanitize_d4m_key(self, value: str) -> str:
         if value is None:
             return ""
         value = str(value).strip()
@@ -143,7 +154,7 @@ class StringBucketedMatrixBuilder:
         value = value.replace("\r", " ")
         return value
 
-    def add_packet(self, src, dst):
+    def add_packet(self, src: str, dst: str) -> None:
         self.src_nodes.append(self.__sanitize_d4m_key(src))
         self.dst_nodes.append(self.__sanitize_d4m_key(dst))
         self.vals.append("1")
@@ -156,7 +167,7 @@ class StringBucketedMatrixBuilder:
             self.vals = []
             self.index = 0
 
-    def _build_assoc(self):
+    def _build_assoc(self) -> "D4M.assoc.Assoc": # type: ignore
         if D4M is None:
             raise RuntimeError("D4M.py is not installed. String mode requires D4M.assoc.")
         if not self.src_nodes or not self.dst_nodes or not self.vals:
@@ -181,7 +192,7 @@ class StringBucketedMatrixBuilder:
 
         self.matrix_count += 1
 
-    def write_single_file(self):
+    def write_single_file(self) -> None:
         if self.index == 0:
             return
 
@@ -190,7 +201,7 @@ class StringBucketedMatrixBuilder:
         with open(output_path, "wb") as f:
             pickle.dump(A, f, protocol=pickle.HIGHEST_PROTOCOL)
 
-    def add_text_file_to_tar(self, arcname, text):
+    def add_text_file_to_tar(self, arcname: str, text: str) -> None:
         if self.tar is None:
             return
         data = text.encode("utf-8")
@@ -198,7 +209,7 @@ class StringBucketedMatrixBuilder:
         info.size = len(data)
         self.tar.addfile(info, io.BytesIO(data))
 
-    def finalize(self, label_tsv_text=None):
+    def finalize(self, label_tsv_text: str = None) -> None:
         if self.one_file_mode:
             self.write_single_file()
         else:

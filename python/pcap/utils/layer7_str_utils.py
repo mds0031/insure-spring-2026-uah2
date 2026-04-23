@@ -18,7 +18,7 @@ def _tally_label_type(app_label: str, bench: Layer7BenchmarkResult) -> None:
 # -----------------------------------------------------------
 # D4M (String Mode)
 # -----------------------------------------------------------
-def str_gen_layer7_matrix(pcap, window, output, one_file_mode, choose_app_label, benchmark=False):
+def str_gen_layer7_matrix(pcap: str, output: str, window: int, one_file_mode: bool, choose_app_label, benchmark: bool = False) -> Layer7BenchmarkResult:
     """
     String mode pipeline:
     - Uses tshark for extraction

@@ -13,11 +13,11 @@ from utils.layer4_bin_utils import bin_gen_layer4_matrix
 
 # Formatting helpers
 
-def fmt_int(x):
+def fmt_int(x: int) -> str:
     return f"{x:,}"
 
 
-def fmt_float(x):
+def fmt_float(x: float) -> str:
     return f"{x:,.6f}"
 
 
@@ -75,7 +75,7 @@ def print_comparison_table(results: dict) -> None:
         max(len(headers[2]), max(len(str(r[2])) for r in rows)),
     ]
 
-    def line(vals):
+    def line(vals: list) -> str:
         return " | ".join(str(v).ljust(widths[i]) for i, v in enumerate(vals))
 
     sep = "-+-".join("-" * w for w in widths)
@@ -91,7 +91,7 @@ def print_comparison_table(results: dict) -> None:
 # Main -- CLI entry point
 # Flags : -i, -o, -w, -b, -O, --bucket, --benchmark.
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
             "Construct Layer 4 matrices from a PCAP: string mode outputs "

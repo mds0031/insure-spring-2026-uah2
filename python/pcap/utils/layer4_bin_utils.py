@@ -33,6 +33,12 @@ def bin_gen_layer4_matrix(
     benchmark_enabled: bool = False,
 ) -> Layer4BenchmarkResult:
     
+    """Binary Mode Method for generating the Layer 4 matrix:
+        - Uses dpkt to read the pcap file and extract source/destination IP addresses and ports
+        - Converts the IP addresses and ports to integers for performance
+        - Builds a GraphBLAS-compatible matrix (binary-based) for the Layer 4 traffic Matrix
+    """
+    
     generator = BucketedMatrixBuilder(
         window, output_dir, one_file_mode,
         "layer4_bin_buckets.tar", "layer4.grb"

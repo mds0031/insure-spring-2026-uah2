@@ -6,7 +6,7 @@ from utils.benchmark import Layer2BenchmarkResult
 from utils.matrix import StringBucketedMatrixBuilder
 
 
-def str_gen_layer2_matrix(pcap, output_dir, subwindow, one_file_mode, benchmark_enabled=False):
+def str_gen_layer2_matrix(pcap: str, output_dir: str, subwindow: int, one_file_mode: bool, benchmark_enabled: bool = False) -> Layer2BenchmarkResult:
     """
         String Mode Method for generating the Layer 2 matrix:
         - Uses tshark to read the pcap file and extract source/destination MAC addresses

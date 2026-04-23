@@ -5,7 +5,7 @@ import dpkt
 from utils.benchmark import Layer2BenchmarkResult
 from utils.matrix import BucketedMatrixBuilder
 
-def bin_gen_layer2_matrix(pcap, output_dir, subwindow, one_file_mode, benchmark_enabled=False):
+def bin_gen_layer2_matrix(pcap: str, output_dir: str, subwindow: int, one_file_mode: bool, benchmark_enabled: bool = False) -> Layer2BenchmarkResult:
     """
         Binary Mode Method for generating the Layer 2 matrix:
         - Uses dpkt to read the pcap file and extract source/destination MAC addresses

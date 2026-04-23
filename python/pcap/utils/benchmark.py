@@ -7,7 +7,7 @@ from time import perf_counter_ns
 
 
 class BaseBenchmarkResult:
-
+    """Base class for benchmark results, providing common functionality."""
     layer: int
     mode: str
     pcap: str
@@ -60,12 +60,13 @@ class BaseBenchmarkResult:
 
 @dataclass
 class Layer7BenchmarkResult(BaseBenchmarkResult):
-    layer: int
-    mode: str
-    pcap: str
-    output_dir: str
-    window_size: int
-    one_file_mode: bool
+    """Benchmark results container for Layer 7 (Application) processing."""
+    layer: int = 7
+    mode: str = ""
+    pcap: str = ""
+    output_dir: str = ""
+    window_size: int = 0
+    one_file_mode: bool = False
 
     packets_seen: int = 0
     valid_packets: int = 0
@@ -75,18 +76,6 @@ class Layer7BenchmarkResult(BaseBenchmarkResult):
     http_labels: int = 0
     tls_labels: int = 0
     dns_labels: int = 0
-
-    step1_read_ns: int = 0
-    step2_parse_ns: int = 0
-    step3_build_ns: int = 0
-    step4_save_ns: int = 0
-
-    total_ns: int = 0
-
-    hostname: str = socket.gethostname()
-    processor: str = platform.processor() or platform.machine()
-    python_version: str = platform.python_version()
-
 
 @dataclass
 class Layer2BenchmarkResult(BaseBenchmarkResult):

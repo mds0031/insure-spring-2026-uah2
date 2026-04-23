@@ -31,6 +31,13 @@ def str_gen_layer4_matrix(
     bucket_prefix: int = 32,
     benchmark_enabled: bool = False,
 ) -> Layer4BenchmarkResult:
+    
+    """
+    String Mode Method for generating the Layer 4 matrix:
+        - Uses tshark to read the pcap file and extract source/destination IP addresses and ports
+        - Keeps the IP addresses and ports as strings for easier debugging and verification
+        - Builds a D4M-compatible associative array (string-based) for the Layer 4 traffic Matrix
+    """
   
     generator = StringBucketedMatrixBuilder(
         window, output_dir, one_file_mode,
