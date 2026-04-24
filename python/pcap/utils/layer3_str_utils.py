@@ -20,7 +20,7 @@ def bucket_ip_str(ip_str: str, prefix: int) -> str:
 
 def str_gen_layer3_matrix(pcap: str, output_dir: str, window: int, one_file_mode: bool, bucket_prefix: int, benchmark_enabled: bool = False) -> Layer3BenchmarkResult:
     generator = StringBucketedMatrixBuilder(
-        window, output_dir, one_file_mode, "layer3_str_buckets.tar"
+        window, output_dir, one_file_mode, "layer3_str_buckets.tar", "layer3.assoc.pkl"
     )
     """
         String Mode Method for generating the Layer 3 matrix:

@@ -22,6 +22,9 @@ def str_gen_layer2_matrix(pcap: str, output_dir: str, subwindow: int, one_file_m
         one_file_mode=one_file_mode
     )
 
+    src_set = set()
+    dst_set = set()
+
     generator = StringBucketedMatrixBuilder(subwindow, output_dir, one_file_mode, "layer2_str_buckets.tar", "layer2.assoc.pkl")
     total_start_ns = perf_counter_ns()
 
@@ -51,10 +54,13 @@ def str_gen_layer2_matrix(pcap: str, output_dir: str, subwindow: int, one_file_m
         # Count the valid packets (those with both source and destination MAC addresses)
         bench.mac_pairs += 1
         bench.step2_parse_ns += perf_counter_ns() - t_parse
+        bench.valid_packets += 1
 
         try:
             t_build = perf_counter_ns()
             generator.add_packet(eth_src, eth_dst)
+            src_set.add(eth_src)
+            dst_set.add(eth_dst)
             bench.step3_build_ns += perf_counter_ns() - t_build
         except ValueError:
             # Still need to count the time taken to attempt to build the matrix even if there's a parsing error
@@ -64,6 +70,9 @@ def str_gen_layer2_matrix(pcap: str, output_dir: str, subwindow: int, one_file_m
     t_save = perf_counter_ns()
     generator.finalize()
     bench.step4_save_ns += perf_counter_ns() - t_save
+    
+    bench.unique_src_macs = len(src_set)
+    bench.unique_dst_macs = len(dst_set)
     bench.finalize(total_start_ns)
 
     print("Total Packets Processed:", bench.packets_seen)

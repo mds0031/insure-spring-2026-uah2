@@ -22,6 +22,9 @@ def bin_gen_layer2_matrix(pcap: str, output_dir: str, subwindow: int, one_file_m
         window_size=subwindow,
         one_file_mode=one_file_mode
     )
+    src_set = set()
+    dst_set = set()
+
     total_start_ns = perf_counter_ns()
 
     for timestamp, buf in dpkt.pcap.Reader(open(pcap, "rb")):
@@ -42,7 +45,9 @@ def bin_gen_layer2_matrix(pcap: str, output_dir: str, subwindow: int, one_file_m
         dst_mac_int = int.from_bytes(eth.dst, 'big')
         bench.mac_pairs += 1
         bench.step2_parse_ns += perf_counter_ns() - t_parse
-        
+        src_set.add(src_mac_int)
+        dst_set.add(dst_mac_int)
+
         # Step 3: Build the GraphBLAS matrix
         t_build = perf_counter_ns()
         generator.add_packet(src_mac_int, dst_mac_int)
@@ -52,8 +57,12 @@ def bin_gen_layer2_matrix(pcap: str, output_dir: str, subwindow: int, one_file_m
     t_save = perf_counter_ns()
     generator.finalize()
     bench.step4_save_ns += perf_counter_ns() - t_save
+    
+    bench.unique_src_macs = len(src_set)
+    bench.unique_dst_macs = len(dst_set)
 
     # Finalize benchmark results
+    print("Total Packets Processed:", bench.packets_seen)
     bench.finalize(total_start_ns)
     if benchmark_enabled:
         bench.write_json("layer2_benchmark_results.json")
