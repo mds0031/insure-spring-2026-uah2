@@ -1,0 +1,17 @@
+{
+  "layer": 7,
+  "mode": "string",
+  "pcap": "tests/smallFlows.pcap",
+  "output_dir": "/home/parallels/Documents/CPE692/insure-spring-2026-uah2/tests/test_outs/all_layers_benchmark/bucketed/layer7/string",
+  "window_size": 131072,
+  "one_file_mode": false,
+  "packets_seen": 14199,
+  "valid_packets": 14181,
+  "labeled_packets": 668,
+  "unlabeled_packets": 13513,
+  "http_labels": 545,
+  "tls_labels": 51,
+  "dns_labels": 72,
+  "execution_time_sec": 0.359949792,
+  "throughput_pps": 39447.16823172939
+}
