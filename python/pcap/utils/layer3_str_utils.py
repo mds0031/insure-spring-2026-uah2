@@ -47,6 +47,7 @@ def str_gen_layer3_matrix(pcap: str, output_dir: str, window: int, one_file_mode
     t_read = perf_counter_ns()
     lines = run_tshark([
         "tshark", "-r", pcap,
+        "-Y", "!ipv6 && !_ws.malformed",
         "-T", "fields",
         "-e", "ip.src",
         "-e", "ip.dst",

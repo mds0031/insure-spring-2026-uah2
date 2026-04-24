@@ -157,7 +157,6 @@ class StringBucketedMatrixBuilder:
     def add_packet(self, src: str, dst: str) -> None:
         self.src_nodes.append(self.__sanitize_d4m_key(src))
         self.dst_nodes.append(self.__sanitize_d4m_key(dst))
-        self.vals.append("1")
         self.index += 1
 
         if not self.one_file_mode and self.index == self.window_size:
@@ -170,13 +169,12 @@ class StringBucketedMatrixBuilder:
     def _build_assoc(self) -> "D4M.assoc.Assoc": # type: ignore
         if D4M is None:
             raise RuntimeError("D4M.py is not installed. String mode requires D4M.assoc.")
-        if not self.src_nodes or not self.dst_nodes or not self.vals:
+        if not self.src_nodes or not self.dst_nodes:
             raise ValueError("Cannot write empty D4M associative array.")
 
         rows_str = ",".join(self.src_nodes) + ","
         cols_str = ",".join(self.dst_nodes) + ","
-        vals_str = ",".join(self.vals) + ","
-        return D4M.assoc.Assoc(rows_str, cols_str, vals_str, None, "add", convert_val=True)
+        return D4M.assoc.Assoc(rows_str, cols_str, 1, None, "add")
 
     def write_bucket_to_tar(self):
         if self.index == 0:
