@@ -6,7 +6,7 @@ from utils.matrix import StringBucketedMatrixBuilder
 from utils.benchmark import Layer3BenchmarkResult
 
 
-def bucket_ip_str(ip_str, prefix):
+def bucket_ip_str(ip_str: str, prefix: int) -> str:
     """Apply a subnet prefix mask to a dotted-quad IP string."""
     if prefix == 32:
         return ip_str
@@ -18,10 +18,16 @@ def bucket_ip_str(ip_str, prefix):
 
 # String Mode (tshark + D4M)
 
-def str_gen_layer3_matrix(pcap, output_dir, window, one_file_mode, bucket_prefix, benchmark_enabled=False):
+def str_gen_layer3_matrix(pcap: str, output_dir: str, window: int, one_file_mode: bool, bucket_prefix: int, benchmark_enabled: bool = False) -> Layer3BenchmarkResult:
     generator = StringBucketedMatrixBuilder(
         window, output_dir, one_file_mode, "layer3_str_buckets.tar"
     )
+    """
+        String Mode Method for generating the Layer 3 matrix:
+        - Uses tshark to read the pcap file and extract source/destination IP addresses
+        - Keeps the IP addresses as strings for easier debugging and verification
+        - Builds a D4M-compatible associative array (string-based) for the Layer 3 traffic Matrix
+    """
 
     bench = Layer3BenchmarkResult(
         layer=3,
@@ -41,6 +47,7 @@ def str_gen_layer3_matrix(pcap, output_dir, window, one_file_mode, bucket_prefix
     t_read = perf_counter_ns()
     lines = run_tshark([
         "tshark", "-r", pcap,
+        "-Y", "!ipv6 && !_ws.malformed",
         "-T", "fields",
         "-e", "ip.src",
         "-e", "ip.dst",

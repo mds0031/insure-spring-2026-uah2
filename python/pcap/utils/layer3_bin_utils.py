@@ -6,7 +6,7 @@ from utils.matrix import BucketedMatrixBuilder
 from utils.benchmark import Layer3BenchmarkResult
 
 
-def bucket_ip_int(ip_int, prefix):
+def bucket_ip_int(ip_int: int, prefix: int) -> int:
     """Apply a subnet prefix mask to an integer IP address."""
     if prefix == 32:
         return ip_int
@@ -17,10 +17,16 @@ def bucket_ip_int(ip_int, prefix):
 
 # Binary Mode (dpkt + GraphBLAS)
 
-def bin_gen_layer3_matrix(pcap, output_dir, window, one_file_mode, bucket_prefix, benchmark_enabled=False):
+def bin_gen_layer3_matrix(pcap: str, output_dir: str, window: int, one_file_mode: bool, bucket_prefix: int, benchmark_enabled: bool = False) -> Layer3BenchmarkResult:
     generator = BucketedMatrixBuilder(
         window, output_dir, one_file_mode, "layer3_bin_buckets.tar"
     )
+    """
+        Binary Mode Method for generating the Layer 3 matrix:
+        - Uses dpkt to read the pcap file and extract source/destination IP addresses
+        - Converts the IP addresses to integers for performance
+        - Builds a GraphBLAS-compatible matrix (binary-based) for the Layer 3 traffic Matrix
+    """
 
     bench = Layer3BenchmarkResult(
         layer=3,

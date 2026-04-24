@@ -1,0 +1,16 @@
+{
+  "layer": 4,
+  "mode": "binary",
+  "pcap": "tests/smallFlows.pcap",
+  "output_dir": "/home/parallels/Documents/CPE692/insure-spring-2026-uah2/tests/test_outs/all_layers_benchmark/layer4/binary",
+  "window_size": 131072,
+  "one_file_mode": true,
+  "packets_seen": 14261,
+  "valid_packets": 14209,
+  "ip_port_pairs": 14209,
+  "unique_src_endpoints": 706,
+  "unique_dst_endpoints": 689,
+  "bucket_prefix": 32,
+  "execution_time_sec": 0.112402625,
+  "throughput_pps": 126874.26116605372
+}

@@ -3,14 +3,14 @@ import subprocess
 import sys
 
 # Runs a TShark command and returns the output as a list of lines
-def run_tshark(cmd):
+def run_tshark(cmd: list) -> list:
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         raise RuntimeError(result.stderr.strip() or "TShark command failed")
     return result.stdout.splitlines()
 
 # Need to make sure the user has installed TShark
-def check_tshark():
+def check_tshark() -> None:
     try:
         result = subprocess.run(
             ["tshark", "-v"],
