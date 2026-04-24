@@ -44,7 +44,9 @@ def str_gen_layer7_matrix(pcap: str, output: str, window: int, one_file_mode: bo
 
     t_read = perf_counter_ns()
     lines = run_tshark([
-        "tshark", "-r", pcap, "-T", "fields",
+        "tshark", "-r", pcap,
+        "-Y", "!(udp.port == 1900 || ssdp)",
+        "-T", "fields",
         "-E", "separator=\t",
         "-E", "occurrence=f",
         "-e", "ip.src",

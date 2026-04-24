@@ -123,12 +123,28 @@ def parse_dns_name(l4_data: bytes) -> str:
 # -----------------------------------------------------------
 # TLS SNI Parsing
 # -----------------------------------------------------------
+def _looks_like_tls_record(data: bytes) -> bool:
+    """Quick pre-check to avoid parsing non-TLS payloads as TLS records."""
+    if len(data) < 5:
+        return False
+
+    content_type = data[0]
+    major = data[1]
+    minor = data[2]
+
+    # TLS record types + legacy version bytes used by TLS/SSL records.
+    return content_type in (20, 21, 22, 23) and major == 3 and minor <= 4
+
+
 def parse_tls_sni(tcp_data: bytes) -> str:
     """
     Extract Server Name Indication (SNI) from TLS ClientHello.
 
     This provides domain-level visibility for encrypted traffic.
     """
+    if not _looks_like_tls_record(tcp_data):
+        return ""
+
     ssl_error_type = getattr(dpkt.ssl, "SSLError", Exception)
 
     try:
