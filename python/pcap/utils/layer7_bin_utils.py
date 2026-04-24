@@ -129,9 +129,11 @@ def parse_tls_sni(tcp_data: bytes) -> str:
 
     This provides domain-level visibility for encrypted traffic.
     """
+    ssl_error_type = getattr(dpkt.ssl, "SSLError", Exception)
+
     try:
         records, _ = dpkt.ssl.tls_multi_factory(tcp_data)
-    except (dpkt.dpkt.NeedData, dpkt.dpkt.UnpackError, dpkt.ssl.SSLError, Exception):
+    except (dpkt.dpkt.NeedData, dpkt.dpkt.UnpackError, ssl_error_type, Exception):
         return ""
 
     for record in records:
