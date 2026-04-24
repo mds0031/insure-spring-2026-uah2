@@ -8,8 +8,8 @@
   "packets_seen": 14261,
   "valid_packets": 0,
   "mac_pairs": 14261,
-  "unique_src_macs": 0,
-  "unique_dst_macs": 0,
-  "execution_time_sec": 0.10321575,
-  "throughput_pps": 138166.897978264
+  "unique_src_macs": 8,
+  "unique_dst_macs": 12,
+  "execution_time_sec": 0.107099583,
+  "throughput_pps": 133156.44749055651
 }

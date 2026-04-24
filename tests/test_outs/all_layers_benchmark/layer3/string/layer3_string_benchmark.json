@@ -11,6 +11,6 @@
   "unique_src_ips": 207,
   "unique_dst_ips": 223,
   "bucket_prefix": 32,
-  "execution_time_sec": 0.385366541,
-  "throughput_pps": 36918.09870956078
+  "execution_time_sec": 0.3729315,
+  "throughput_pps": 38149.09708619411
 }

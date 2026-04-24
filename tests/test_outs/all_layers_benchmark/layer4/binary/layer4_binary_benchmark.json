@@ -11,6 +11,6 @@
   "unique_src_endpoints": 706,
   "unique_dst_endpoints": 689,
   "bucket_prefix": 32,
-  "execution_time_sec": 0.112402625,
-  "throughput_pps": 126874.26116605372
+  "execution_time_sec": 0.115214166,
+  "throughput_pps": 123778.18192946863
 }

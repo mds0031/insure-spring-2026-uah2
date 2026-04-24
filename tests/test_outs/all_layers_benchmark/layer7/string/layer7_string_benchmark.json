@@ -12,6 +12,6 @@
   "http_labels": 545,
   "tls_labels": 51,
   "dns_labels": 72,
-  "execution_time_sec": 0.359076251,
-  "throughput_pps": 39543.133138036465
+  "execution_time_sec": 0.3572785,
+  "throughput_pps": 39742.10594816089
 }
