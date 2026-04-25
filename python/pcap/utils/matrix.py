@@ -135,7 +135,6 @@ class StringBucketedMatrixBuilder:
 
         self.src_nodes = []
         self.dst_nodes = []
-        self.vals = []
 
         os.makedirs(self.output_dir, exist_ok=True)
 
@@ -163,7 +162,6 @@ class StringBucketedMatrixBuilder:
             self.write_bucket_to_tar()
             self.src_nodes = []
             self.dst_nodes = []
-            self.vals = []
             self.index = 0
 
     def _build_assoc(self) -> "D4M.assoc.Assoc": # type: ignore
