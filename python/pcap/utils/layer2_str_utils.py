@@ -77,5 +77,5 @@ def str_gen_layer2_matrix(pcap: str, output_dir: str, subwindow: int, one_file_m
 
     print("Total Packets Processed:", bench.packets_seen)
     if benchmark_enabled:
-        bench.write_json("layer2_benchmark_results.json")
+        bench.write_json("layer2_binary_benchmark_results.json")
     return bench
