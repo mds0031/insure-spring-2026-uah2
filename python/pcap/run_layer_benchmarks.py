@@ -5,10 +5,11 @@ Usage:
     python run_layer_benchmarks.py -i input.pcap -o output_dir --window 131072 --one-file --map layer7_labels.tsv --layers 2,3,4,7
 """
 import argparse
+import concurrent.futures
 import os
 import subprocess
 import sys
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 
 SCRIPT_NAMES = {
@@ -75,6 +76,30 @@ def run_layer_script(command: List[str]) -> Tuple[bool, str]:
     return success, output_text
 
 
+def _run_one_layer(
+    layer: int,
+    script_dir: str,
+    out_root: str,
+    args: argparse.Namespace,
+) -> Tuple[int, bool, str, List[str]]:
+    script_name = SCRIPT_NAMES[layer]
+    script_path = os.path.join(script_dir, script_name)
+    layer_output = os.path.join(out_root, f"layer{layer}")
+    os.makedirs(layer_output, exist_ok=True)
+
+    command = _build_command(
+        python_exe=sys.executable,
+        script_path=script_path,
+        pcap_path=args.pcap,
+        output_dir=layer_output,
+        window_size=args.window,
+        one_file_mode=args.one_file,
+        label_map_name=args.map,
+    )
+    success, output_text = run_layer_script(command)
+    return layer, success, output_text, command
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Run layer2/layer3/layer4/layer7 matrix scripts with benchmarking enabled."
@@ -128,30 +153,27 @@ def main() -> None:
             f"Unsupported layer(s): {invalid}. Choose from {sorted(SCRIPT_NAMES.keys())}."
         )
 
+    print(f"Launching {len(requested_layers)} layer benchmark script(s) in parallel...")
+
+    max_workers = max(1, len(requested_layers))
+    futures: Dict[concurrent.futures.Future, int] = {}
+    results: Dict[int, Tuple[bool, str, List[str]]] = {}
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        for layer in requested_layers:
+            future = executor.submit(_run_one_layer, layer, script_dir, out_root, args)
+            futures[future] = layer
+
+        for future in concurrent.futures.as_completed(futures):
+            layer, success, output_text, command = future.result()
+            results[layer] = (success, output_text, command)
+
     failures = []
-
     for layer in requested_layers:
-        script_name = SCRIPT_NAMES[layer]
-        script_path = os.path.join(script_dir, script_name)
-        layer_output = os.path.join(out_root, f"layer{layer}")
-        os.makedirs(layer_output, exist_ok=True)
-
-        command = _build_command(
-            python_exe=sys.executable,
-            script_path=script_path,
-            pcap_path=args.pcap,
-            output_dir=layer_output,
-            window_size=args.window,
-            one_file_mode=args.one_file,
-            label_map_name=args.map,
-        )
-
+        success, output_text, command = results[layer]
         print(f"\n=== Running Layer {layer} benchmark ===")
         print("Command:", " ".join(command))
-
-        success, output_text = run_layer_script(command)
         print(output_text)
-
         if not success:
             failures.append(layer)
 

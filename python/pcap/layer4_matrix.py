@@ -1,12 +1,12 @@
 # Layer 4: IP:Port --> IP:Port
 
+from concurrent.futures import ProcessPoolExecutor
 import sys
 import argparse
 import os
 from textwrap import shorten
 
 import utils.conversion as conv
-from utils.tshark_utils import check_tshark
 from utils.layer4_str_utils import str_gen_layer4_matrix
 from utils.layer4_bin_utils import bin_gen_layer4_matrix
 
@@ -95,7 +95,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
             "Construct Layer 4 matrices from a PCAP: string mode outputs "
-            "D4M-compatible buckets via tshark, binary mode outputs GraphBLAS "
+            "D4M-compatible buckets via DPKT, binary mode outputs GraphBLAS "
             "buckets via dpkt for higher throughput."
         )
     )
@@ -147,15 +147,27 @@ def main() -> None:
             print("Benchmarking enabled. Running both string and binary modes for comparison.")
             os.makedirs(string_out, exist_ok=True)
             os.makedirs(binary_out, exist_ok=True)
-            check_tshark()
-            str_result = str_gen_layer4_matrix(
-                input_pcap, string_out, window_size, one_file_mode, bucket_prefix,
-                benchmark_enabled=True
-            )
-            bin_result = bin_gen_layer4_matrix(
-                input_pcap, binary_out, window_size, one_file_mode, bucket_prefix,
-                benchmark_enabled=True
-            )
+            with ProcessPoolExecutor(max_workers=2) as executor:
+                string_future = executor.submit(
+                    str_gen_layer4_matrix,
+                    input_pcap,
+                    string_out,
+                    window_size,
+                    one_file_mode,
+                    bucket_prefix, 
+                    True,
+                )
+                binary_future = executor.submit(
+                    bin_gen_layer4_matrix, 
+                    input_pcap,
+                    binary_out,
+                    window_size,
+                    one_file_mode,
+                    bucket_prefix, 
+                    True,
+                )
+                str_result = string_future.result()
+                bin_result = binary_future.result()
 
         elif args.binary:
             print("Using binary mode (dpkt) for higher throughput.")

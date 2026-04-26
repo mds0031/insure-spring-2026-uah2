@@ -1,11 +1,11 @@
 import argparse
+from concurrent.futures import ProcessPoolExecutor
 import os
 import sys
 from textwrap import shorten
 
 
 #Project utility modules
-from utils.tshark_utils import check_tshark
 from utils.layer7_bin_utils import bin_gen_layer7_matrix
 from utils.layer7_str_utils import str_gen_layer7_matrix
 
@@ -117,7 +117,7 @@ def main() -> None:
     parser.add_argument(
         "-b", "--binary",
         action="store_true",
-        help="Binary mode: parse raw packets with dpkt and save GraphBLAS buckets. Default is string mode using tshark and D4M-compatible output."
+        help="Binary mode: parse raw packets with dpkt and save GraphBLAS buckets. Default is string mode using DPKT and D4M-compatible output."
     )
     parser.add_argument(
         "-O", "--one-file",
@@ -132,7 +132,7 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    # Arg values for gen_layer5_matrixs
+    # Arg values for gen_layer7_matrixs
     window_size = args.window
     input_pcap = args.pcap
     output_dir = args.output
@@ -147,23 +147,29 @@ def main() -> None:
     try:
         if benchmark:
             print("Benchmarking enabled. Running both string and binary modes for comparison.")
-            str_result = str_gen_layer7_matrix(
-                input_pcap,
-                string_out,
-                window_size,
-                one_file_mode,
-                choose_app_label,
-                True,
-            )
-            bin_result = bin_gen_layer7_matrix(
-                input_pcap,
-                binary_out,
-                window_size,
-                one_file_mode,
-                label_map_path,
-                choose_app_label,
-                True,
-            )
+            with ProcessPoolExecutor(max_workers=2) as executor:
+                string_future = executor.submit(
+                    str_gen_layer7_matrix,
+                    input_pcap,
+                    string_out,
+                    window_size,
+                    one_file_mode,
+                    choose_app_label,
+                    True,
+                )
+                binary_future = executor.submit(
+                    bin_gen_layer7_matrix, 
+                    input_pcap,
+                    binary_out,
+                    window_size,
+                    one_file_mode,
+                    label_map_path,
+                    choose_app_label,
+                    True,
+                )
+                str_result = string_future.result()
+                bin_result = binary_future.result()
+
         elif args.binary:
             print(f"Generating Layer 7 GraphBLAS buckets in binary mode from PCAP file: {input_pcap}")
             bin_result = bin_gen_layer7_matrix(
@@ -176,7 +182,6 @@ def main() -> None:
                 False
             )
         else:
-            check_tshark()
             print(f"Generating Layer 7 D4M-compatible buckets in string mode from PCAP file: {input_pcap}")
             str_result = str_gen_layer7_matrix(
                 input_pcap,

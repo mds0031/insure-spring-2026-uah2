@@ -1,7 +1,8 @@
 from time import perf_counter_ns
 
+import dpkt
+
 import utils.conversion as conv
-from utils.tshark_utils import run_tshark
 from utils.matrix import StringBucketedMatrixBuilder
 from utils.benchmark import Layer4BenchmarkResult
 
@@ -21,7 +22,7 @@ def ip_port_to_str(ip: str, port: str, prefix: int = 32) -> str:
     return f"{bucketed}:{port}"
 
 
-# String Mode (D4m & tshark)
+# String Mode (D4M & dpkt)
 
 def str_gen_layer4_matrix(
     pcap: str,
@@ -34,7 +35,7 @@ def str_gen_layer4_matrix(
     
     """
     String Mode Method for generating the Layer 4 matrix:
-        - Uses tshark to read the pcap file and extract source/destination IP addresses and ports
+        - Uses dpkt to read the pcap file and extract source/destination IP addresses and ports
         - Keeps the IP addresses and ports as strings for easier debugging and verification
         - Builds a D4M-compatible associative array (string-based) for the Layer 4 traffic Matrix
     """
@@ -58,61 +59,67 @@ def str_gen_layer4_matrix(
     dst_set: set = set()
     total_start_ns = perf_counter_ns()
 
-    # Step 1: invoke tshark once, requesting all L4 fields in one pass.
-    # Both TCP and UDP port fields are requested; TCP is preferred per-packet.
-    t_read = perf_counter_ns()
-    lines = run_tshark([
-        "tshark", "-r", pcap,
-        "-Y", "!ipv6 && !_ws.malformed",
-        "-T", "fields",
-        "-e", "frame.number",
-        "-e", "ip.src",
-        "-e", "tcp.srcport",
-        "-e", "ip.dst",
-        "-e", "tcp.dstport",
-        "-e", "udp.srcport",
-        "-e", "udp.dstport",
-    ])
-    bench.step1_read_ns += perf_counter_ns() - t_read
+    with open(pcap, "rb") as f:
+        reader = dpkt.pcap.Reader(f)
 
-    for line in lines:
-        bench.packets_seen += 1
+        while True:
+            # Step 1: read next frame
+            t_read = perf_counter_ns()
+            try:
+                _, buf = next(reader)
+            except StopIteration:
+                break
+            bench.step1_read_ns += perf_counter_ns() - t_read
+            bench.packets_seen += 1
 
-        # Step 2: parse tab-delimited tshark output
-        t_parse = perf_counter_ns()
-        parts = line.split("\t")
-        if len(parts) < 7:
+            # Step 2: parse Ethernet -> IP -> TCP/UDP
+            t_parse = perf_counter_ns()
+
+            try:
+                eth = dpkt.ethernet.Ethernet(buf)
+            except (dpkt.dpkt.NeedData, dpkt.dpkt.UnpackError):
+                bench.step2_parse_ns += perf_counter_ns() - t_parse
+                continue
+
+            ip = eth.data
+            if not isinstance(ip, dpkt.ip.IP):
+                bench.step2_parse_ns += perf_counter_ns() - t_parse
+                continue
+
+            transport = ip.data
+            if isinstance(transport, dpkt.tcp.TCP):
+                sport, dport = transport.sport, transport.dport
+            elif isinstance(transport, dpkt.udp.UDP):
+                sport, dport = transport.sport, transport.dport
+            else:
+                bench.step2_parse_ns += perf_counter_ns() - t_parse
+                continue
+
+            ip_src = ".".join(str(b) for b in ip.src)
+            ip_dst = ".".join(str(b) for b in ip.dst)
+
+            if not ip_src or not ip_dst:
+                bench.step2_parse_ns += perf_counter_ns() - t_parse
+                continue
+
+            bench.valid_packets += 1
+
+            try:
+                src_label = ip_port_to_str(ip_src, str(sport), bucket_prefix)
+                dst_label = ip_port_to_str(ip_dst, str(dport), bucket_prefix)
+            except (ValueError, IndexError):
+                bench.step2_parse_ns += perf_counter_ns() - t_parse
+                continue
+
+            bench.ip_port_pairs += 1
+            src_set.add(src_label)
+            dst_set.add(dst_label)
             bench.step2_parse_ns += perf_counter_ns() - t_parse
-            continue
 
-        _frame_no, ip_src, tcp_sport, ip_dst, tcp_dport, udp_sport, udp_dport = parts[:7]
-
-        # Prefer TCP ports; fall back to UDP
-        sport = tcp_sport if tcp_sport else udp_sport
-        dport = tcp_dport if tcp_dport else udp_dport
-
-        if not ip_src or not ip_dst or not sport or not dport:
-            bench.step2_parse_ns += perf_counter_ns() - t_parse
-            continue
-
-        bench.valid_packets += 1
-
-        try:
-            src_label = ip_port_to_str(ip_src, sport, bucket_prefix)
-            dst_label = ip_port_to_str(ip_dst, dport, bucket_prefix)
-        except (ValueError, IndexError):
-            bench.step2_parse_ns += perf_counter_ns() - t_parse
-            continue
-
-        bench.ip_port_pairs += 1
-        src_set.add(src_label)
-        dst_set.add(dst_label)
-        bench.step2_parse_ns += perf_counter_ns() - t_parse
-
-        # Step 4: accumulate into bucketed D4M matrix
-        t_build = perf_counter_ns()
-        generator.add_packet(src_label, dst_label)
-        bench.step3_build_ns += perf_counter_ns() - t_build
+            # Step 4: accumulate into bucketed D4M matrix
+            t_build = perf_counter_ns()
+            generator.add_packet(src_label, dst_label)
+            bench.step3_build_ns += perf_counter_ns() - t_build
 
     # Step 5: flush and serialize
     t_save = perf_counter_ns()

@@ -1,7 +1,8 @@
 # Generates the matrix with the pcap file
 from time import perf_counter_ns
 
-from utils import tshark_utils
+import dpkt
+
 from utils.benchmark import Layer2BenchmarkResult
 from utils.matrix import StringBucketedMatrixBuilder
 
@@ -9,7 +10,7 @@ from utils.matrix import StringBucketedMatrixBuilder
 def str_gen_layer2_matrix(pcap: str, output_dir: str, subwindow: int, one_file_mode: bool, benchmark_enabled: bool = False) -> Layer2BenchmarkResult:
     """
         String Mode Method for generating the Layer 2 matrix:
-        - Uses tshark to read the pcap file and extract source/destination MAC addresses
+        - Uses dpkt to read the pcap file and extract source/destination MAC addresses
         - Keeps the MAC addresses as strings for easier debugging and verification
         - Builds a D4M-compatible associative array (string-based) for the Layer 2 traffic Matrix
     """
@@ -28,44 +29,43 @@ def str_gen_layer2_matrix(pcap: str, output_dir: str, subwindow: int, one_file_m
     generator = StringBucketedMatrixBuilder(subwindow, output_dir, one_file_mode, "layer2_str_buckets.tar", "layer2.assoc.pkl")
     total_start_ns = perf_counter_ns()
 
-    t_read = perf_counter_ns()
-    # Command to extract source and destination MAC addresses from the pcap file using TShark
-    lines = tshark_utils.run_tshark([
-        "tshark", "-r", pcap,
-        "-T", "fields",
-        "-e", "eth.src",
-        "-e", "eth.dst"
-    ])
-    bench.step1_read_ns += perf_counter_ns() - t_read
+    with open(pcap, "rb") as f:
+        for _timestamp, buf in dpkt.pcap.Reader(f):
+            t_read = perf_counter_ns()
+            try:
+                eth = dpkt.ethernet.Ethernet(buf)
+            except (dpkt.dpkt.NeedData, dpkt.dpkt.UnpackError):
+                bench.step1_read_ns += perf_counter_ns() - t_read
+                continue
 
-    for line in lines:
-        bench.packets_seen += 1
-        t_parse = perf_counter_ns()
-        parts = line.split("\t")
-        if len(parts) < 2:
-            continue
+            bench.step1_read_ns += perf_counter_ns() - t_read
+            
+            # MAC labels are kept as strings to preserve string-mode behavior.
+            eth_src = ":".join(f"{b:02x}" for b in eth.src)
+            eth_dst = ":".join(f"{b:02x}" for b in eth.dst)
 
-        eth_src, eth_dst = parts[:2]
+            bench.packets_seen += 1
+            t_parse = perf_counter_ns()
 
-        if not eth_src or not eth_dst:
+            if not eth_src or not eth_dst:
+                bench.step2_parse_ns += perf_counter_ns() - t_parse
+                continue
+
+            # Count the valid packets (those with both source and destination MAC addresses)
+            bench.mac_pairs += 1
             bench.step2_parse_ns += perf_counter_ns() - t_parse
-            continue
+            bench.valid_packets += 1
 
-        # Count the valid packets (those with both source and destination MAC addresses)
-        bench.mac_pairs += 1
-        bench.step2_parse_ns += perf_counter_ns() - t_parse
-        bench.valid_packets += 1
-
-        try:
-            t_build = perf_counter_ns()
-            generator.add_packet(eth_src, eth_dst)
-            src_set.add(eth_src)
-            dst_set.add(eth_dst)
-            bench.step3_build_ns += perf_counter_ns() - t_build
-        except ValueError:
-            # Still need to count the time taken to attempt to build the matrix even if there's a parsing error
-            bench.step3_build_ns += perf_counter_ns() - t_build
-            continue
+            try:
+                t_build = perf_counter_ns()
+                generator.add_packet(eth_src, eth_dst)
+                src_set.add(eth_src)
+                dst_set.add(eth_dst)
+                bench.step3_build_ns += perf_counter_ns() - t_build
+            except ValueError:
+                # Still need to count the time taken to attempt to build the matrix even if there's a parsing error
+                bench.step3_build_ns += perf_counter_ns() - t_build
+                continue
 
     t_save = perf_counter_ns()
     generator.finalize()
