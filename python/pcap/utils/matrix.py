@@ -4,6 +4,7 @@ import tarfile
 import pickle
 import numpy as np
 from graphblas import Matrix, binary
+import gc
 #For String mode
 try:
     import D4M.assoc
@@ -135,7 +136,6 @@ class StringBucketedMatrixBuilder:
 
         self.src_nodes = []
         self.dst_nodes = []
-        self.vals = []
 
         os.makedirs(self.output_dir, exist_ok=True)
 
@@ -148,10 +148,19 @@ class StringBucketedMatrixBuilder:
     def __sanitize_d4m_key(self, value: str) -> str:
         if value is None:
             return ""
-        value = str(value).strip()
-        value = value.replace(",", "%2C")
-        value = value.replace("\n", " ")
-        value = value.replace("\r", " ")
+        if not isinstance(value, str):
+            value = str(value)
+
+        value = value.strip()
+
+        # Avoid allocating replacement copies when a character is absent.
+        if "," in value:
+            value = value.replace(",", "%2C")
+        if "\n" in value:
+            value = value.replace("\n", " ")
+        if "\r" in value:
+            value = value.replace("\r", " ")
+
         return value
 
     def add_packet(self, src: str, dst: str) -> None:
@@ -163,8 +172,8 @@ class StringBucketedMatrixBuilder:
             self.write_bucket_to_tar()
             self.src_nodes = []
             self.dst_nodes = []
-            self.vals = []
             self.index = 0
+            gc.collect()
 
     def _build_assoc(self) -> "D4M.assoc.Assoc": # type: ignore
         if D4M is None:
@@ -174,7 +183,12 @@ class StringBucketedMatrixBuilder:
 
         rows_str = ",".join(self.src_nodes) + ","
         cols_str = ",".join(self.dst_nodes) + ","
-        return D4M.assoc.Assoc(rows_str, cols_str, 1, None, "add")
+        assoc = D4M.assoc.Assoc(rows_str, cols_str, 1, None, "add")
+
+        # Drop large temporary joined strings as soon as Assoc is built.
+        del rows_str
+        del cols_str
+        return assoc
 
     def write_bucket_to_tar(self):
         if self.index == 0:
@@ -188,6 +202,9 @@ class StringBucketedMatrixBuilder:
         info.size = len(data)
         self.tar.addfile(info, io.BytesIO(data))
 
+        # Clean up memory used by the associative array after writing to tar
+        del A
+        del data
         self.matrix_count += 1
 
     def write_single_file(self) -> None:
@@ -198,6 +215,8 @@ class StringBucketedMatrixBuilder:
         output_path = os.path.join(self.output_dir, self.one_file_name)
         with open(output_path, "wb") as f:
             pickle.dump(A, f, protocol=pickle.HIGHEST_PROTOCOL)
+        del A
+        gc.collect()
 
     def add_text_file_to_tar(self, arcname: str, text: str) -> None:
         if self.tar is None:

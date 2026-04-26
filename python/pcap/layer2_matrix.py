@@ -1,11 +1,11 @@
 import sys
 import argparse
 import os
+from concurrent.futures import ProcessPoolExecutor
 from textwrap import shorten
 from utils.layer2_bin_utils import bin_gen_layer2_matrix
 from utils.layer2_str_utils import str_gen_layer2_matrix
 import utils.conversion as conv
-import utils.tshark_utils as tshark_utils
 
 
 def fmt_int(x: int) -> str:
@@ -25,6 +25,8 @@ def print_comparison_table(results: dict) -> None:
     rows = [
         ("Packets Seen", fmt_int(results["string"].packets_seen), fmt_int(results["binary"].packets_seen)),
         ("MAC Pairs", fmt_int(results["string"].mac_pairs), fmt_int(results["binary"].mac_pairs)),
+        ("Unique Src MACs", fmt_int(results["string"].unique_src_macs), fmt_int(results["binary"].unique_src_macs)),
+        ("Unique Dst MACs", fmt_int(results["string"].unique_dst_macs), fmt_int(results["binary"].unique_dst_macs)),
         ("Step 1 Read (s)", fmt_float(conv.ns_to_s(results["string"].step1_read_ns)), fmt_float(conv.ns_to_s(results["binary"].step1_read_ns))),
         ("Step 2 Parse (s)", fmt_float(conv.ns_to_s(results["string"].step2_parse_ns)), fmt_float(conv.ns_to_s(results["binary"].step2_parse_ns))),
         ("Step 3 Build (s)", fmt_float(conv.ns_to_s(results["string"].step3_build_ns)), fmt_float(conv.ns_to_s(results["binary"].step3_build_ns))),
@@ -83,14 +85,25 @@ def main():
         string_out = os.path.join(out_root, "string")
         binary_out = os.path.join(out_root, "binary")
 
-        tshark_utils.check_tshark()
         os.makedirs(output_dir, exist_ok=True)
 
         print(f"Processing Layer 2 from {input_pcap}")
         if benchmark:
             print("Benchmarking enabled. Running both string and binary modes for comparison.")
-            str_result = str_gen_layer2_matrix(input_pcap, string_out, window_size, one_file_mode, True)
-            bin_result = bin_gen_layer2_matrix(input_pcap, binary_out, window_size, one_file_mode, True)
+            with ProcessPoolExecutor(max_workers=2) as executor:
+                string_future = executor.submit(
+                    str_gen_layer2_matrix,
+                    input_pcap,
+                    string_out, window_size, one_file_mode,
+                    True,
+                )
+                binary_future = executor.submit(
+                    bin_gen_layer2_matrix, input_pcap,
+                    binary_out, window_size, one_file_mode,
+                    True,
+                )
+                str_result = string_future.result()
+                bin_result = binary_future.result()
         elif performance_mode:
             print("Using binary capture values for performance.")
             bin_result = bin_gen_layer2_matrix(input_pcap, output_dir, window_size, one_file_mode, False)

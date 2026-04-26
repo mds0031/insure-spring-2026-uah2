@@ -1,0 +1,15 @@
+{
+  "layer": 2,
+  "mode": "string",
+  "pcap": "tests/smallFlows.pcap",
+  "output_dir": "/home/parallels/Documents/CPE692/insure-spring-2026-uah2/tests/test_outs/all_layers_benchmark/single_file/layer2/string",
+  "window_size": 131072,
+  "one_file_mode": true,
+  "packets_seen": 14261,
+  "valid_packets": 14261,
+  "mac_pairs": 14261,
+  "unique_src_macs": 8,
+  "unique_dst_macs": 12,
+  "execution_time_sec": 0.371142167,
+  "throughput_pps": 38424.62880268735
+}

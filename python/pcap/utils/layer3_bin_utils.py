@@ -19,7 +19,7 @@ def bucket_ip_int(ip_int: int, prefix: int) -> int:
 
 def bin_gen_layer3_matrix(pcap: str, output_dir: str, window: int, one_file_mode: bool, bucket_prefix: int, benchmark_enabled: bool = False) -> Layer3BenchmarkResult:
     generator = BucketedMatrixBuilder(
-        window, output_dir, one_file_mode, "layer3_bin_buckets.tar"
+        window, output_dir, one_file_mode, "layer3_bin_buckets.tar", "layer3.grb"
     )
     """
         Binary Mode Method for generating the Layer 3 matrix:
