@@ -87,70 +87,70 @@ python3 pcap/layer2_pcap2grb.py
 ```
 ### One-file Binary mode
 ```
-python3 pcap/layer2_matrix.py
-  -i ../tests/http.cap
-  -o ../tests/test_outs/layer2/one_file
-  -b
+python3 pcap/layer2_matrix.py \
+  -i ../tests/http.cap \
+  -o ../tests/test_outs/layer2/one_file \
+  -b \
   -O
 ```
 ### Binary mode
 ```
-python3 pcap/layer2_matrix.py
-  -i ../tests/http.cap
-  -o ../tests/test_outs/layer2
+python3 pcap/layer2_matrix.py \
+  -i ../tests/http.cap \
+  -o ../tests/test_outs/layer2 \
   -b \
   -w 1
 ```
 ### String mode
 ```
-python3 pcap/layer2_matrix.py
-  -i ../tests/http.cap
-  -o ../tests/test_outs/layer2
+python3 pcap/layer2_matrix.py \
+  -i ../tests/http.cap \
+  -o ../tests/test_outs/layer2 \
   -w 1
 ```
 ## Layer 3
 ```
-python3 layer3_initial.py \
+python3 layer3_matrix.py \
   -i ../../tests/http.cap \
   -o ../../tests/test_outs/layer3.grb
 ```
 ## Layer 4
 ```
-python3 layer4_initial.py \
+python3 layer4_matrix.py \
   -i ../../tests/http.cap \
   -o ../../tests/test_outs/layer4.grb
 ```
 ## Layer 5 & 7
 ### One-file String mode
 ```
-python3 pcap/layer7_pcap2_grb_d4m.py   
-  -i ../tests/http.cap
-  -o ../tests/test_outs/layer7/one_file 
+python3 pcap/layer7_matrix.py \
+  -i ../tests/http.cap \
+  -o ../tests/test_outs/layer7/one_file \
   -O
 ```
 ### One-file Binary mode
 ```
-python3 pcap/layer7_pcap2_grb_d4m.py   
-  -i ../tests/http.cap
-  -o ../tests/test_outs/layer7/one_file
-  -m layer7_labels.tsv 
-  -b 
+python3 pcap/layer7_matrixpy \
+  -i ../tests/http.cap \
+  -o ../tests/test_outs/layer7/one_file \
+  -m layer7_labels.tsv \
+  -b \
   -O
 ```
 ### Binary mode
 ```
-python3 pcap/layer7_pcap2_grb_d4m.py
-  -i ../tests/http.cap   
-  -o ../tests/test_outs/layer7   
-  -m layer7_labels.tsv   
-  -b 
+python3 pcap/layer7_matrix.py \
+  -i ../tests/http.cap \
+  -o ../tests/test_outs/layer7 \
+  -m layer7_labels.tsv \
+  -b \
   -w 1
 ```
 ## String mode
 ```
-python3 pcap/layer7_pcap2_grb_d4m.py
-  -i ../tests/http.cap
-  -o ../tests/test_outs/layer7 
+python3 pcap/layer7_matrix.py
+  -i ../tests/http.cap \
+  -o ../tests/test_outs/layer7 \
   -w 1
 ```
 
@@ -172,3 +172,11 @@ cd python/utils
 python3 adump.py #.assoc.pkl
 ```
 Where # is the number in front of the assoc.pkl file you are decoding
+
+## Run Scripts With Benchmark
+Run benchmark on all layer script files with the --benchmark flag, which enables benchmarking that runs both string and binary methods that also saves results to JSON file.
+```
+python3 python/pcap/run_layer_benchmarks.py   
+-i tests/202604080015.pcap   
+-o tests/test_outs/run_all_benchmark
+```
