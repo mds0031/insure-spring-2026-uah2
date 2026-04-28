@@ -174,7 +174,7 @@ python3 adump.py #.assoc.pkl
 Where # is the number in front of the assoc.pkl file you are decoding
 
 ## Run Scripts With Benchmark
-Run benchmark on all layer script files with the --benchmark flag, which enables benchmarking that runs both string and binary methods that also saves results to JSON file.
+The run_layer_benchmarks.py script file runs benchmark on all layer script files with the --benchmark flag, which enables benchmarking that runs both string and binary methods that also saves results to JSON file.
 ```
 python3 python/pcap/run_layer_benchmarks.py   
 -i tests/202604080015.pcap   

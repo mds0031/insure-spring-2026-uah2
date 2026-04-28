@@ -1,0 +1,16 @@
+{
+  "layer": 3,
+  "mode": "binary",
+  "pcap": "tests/http.cap",
+  "output_dir": "/home/parallels/Documents/CPE692/insure-spring-2026-uah2/tests/test_outs/layer3/binary",
+  "window_size": 131072,
+  "one_file_mode": true,
+  "packets_seen": 43,
+  "valid_packets": 43,
+  "ip_pairs": 43,
+  "unique_src_ips": 4,
+  "unique_dst_ips": 4,
+  "bucket_prefix": 32,
+  "execution_time_sec": 0.002510625,
+  "throughput_pps": 17127.20936021907
+}

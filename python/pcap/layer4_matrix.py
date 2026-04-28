@@ -176,7 +176,6 @@ def main() -> None:
             )
 
         else:
-            check_tshark()
             print("Using string mode (tshark) for easier debugging.")
             str_result = str_gen_layer4_matrix(
                 input_pcap, output_dir, window_size, one_file_mode, bucket_prefix
