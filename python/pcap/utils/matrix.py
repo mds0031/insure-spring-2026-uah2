@@ -2,6 +2,7 @@ import os
 import io
 import tarfile
 import pickle
+import gzip
 import numpy as np
 from graphblas import Matrix, binary
 import gc
@@ -196,15 +197,17 @@ class StringBucketedMatrixBuilder:
 
         A = self._build_assoc()
         data = pickle.dumps(A, protocol=pickle.HIGHEST_PROTOCOL)
+        compressed_data = gzip.compress(data)
 
-        arcname = f"{self.matrix_count}.assoc.pkl"
+        arcname = f"{self.matrix_count}.assoc.pkl.gz"
         info = tarfile.TarInfo(name=arcname)
-        info.size = len(data)
-        self.tar.addfile(info, io.BytesIO(data))
+        info.size = len(compressed_data)
+        self.tar.addfile(info, io.BytesIO(compressed_data))
 
         # Clean up memory used by the associative array after writing to tar
         del A
         del data
+        del compressed_data
         self.matrix_count += 1
 
     def write_single_file(self) -> None:
