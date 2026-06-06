@@ -1,11 +1,11 @@
 import os
 import io
 import tarfile
-import pickle
 import gzip
 import numpy as np
 from graphblas import Matrix, binary
 import gc
+import compress_pickle
 #For String mode
 try:
     import D4M.assoc
@@ -196,7 +196,7 @@ class StringBucketedMatrixBuilder:
             return
 
         A = self._build_assoc()
-        data = pickle.dumps(A, protocol=pickle.HIGHEST_PROTOCOL)
+        data = compress_pickle.dumps(A, protocol=compress_pickle.HIGHEST_PROTOCOL, compression="gzip")
         compressed_data = gzip.compress(data)
 
         arcname = f"{self.matrix_count}.assoc.pkl.gz"
@@ -217,7 +217,7 @@ class StringBucketedMatrixBuilder:
         A = self._build_assoc()
         output_path = os.path.join(self.output_dir, self.one_file_name)
         with open(output_path, "wb") as f:
-            pickle.dump(A, f, protocol=pickle.HIGHEST_PROTOCOL)
+            compress_pickle.dump(A, f, protocol=compress_pickle.HIGHEST_PROTOCOL, compression="gzip")
         del A
         gc.collect()
 
