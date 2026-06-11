@@ -43,23 +43,27 @@ insure-spring-2026-uah2/
 git clone https://github.com/mds0031/insure-spring-2026-uah2.git
 cd insure-spring-2026-uah2
 ```
-2. Create and activate a Python virtual enivronment
+2. Run setup script (recommended)
+
+```
+./scripts/setup.sh
+source .venv/bin/activate
+```
+
+3. Manual setup (alternative)
 ```
 python3 -m venv .venv
 source .venv/bin/activate
-```
-3. Install Python dependencies
-```
 pip install --upgrade pip
-pip install python-graphblas dpkt
+pip install -r requirements.txt
 ```
 4. Install external project dependencies
-This project also depends on:
+This project may also depend on:
 
 - ILANDS-sensor – supporting workflows related to cyber data processing GitHub: https://github.com/CAIDA/ILANDS-sensor
 - D4M.py – D4M support for associative-array style data handling GitHub: https://github.com/Accla/D4M.py
 
-If you are using the Layer 7 D4M workflow, clone and set up D4M.py separately according to its repository instructions.
+If you are using the Layer 7 D4M workflow and install from source instead of `requirements.txt`, clone and set up D4M.py separately according to its repository instructions.
 
 Example:
 ```
@@ -67,6 +71,12 @@ git clone https://github.com/Accla/D4M.py.git
 ```
 
 # Dependencies
+
+## Python packages (recommended)
+
+- Install required packages: `pip install -r requirements.txt`
+- The Layer 7 string-mode dependency (D4M.py) is included in `requirements.txt`
+
 ## External repositories
 
 - python-graphblas GitHub: https://github.com/python-graphblas/python-graphblas

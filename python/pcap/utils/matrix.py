@@ -1,11 +1,10 @@
 import os
 import io
 import tarfile
-import pickle
-import gzip
 import numpy as np
 from graphblas import Matrix, binary
 import gc
+import compress_pickle
 #For String mode
 try:
     import D4M.assoc
@@ -196,18 +195,16 @@ class StringBucketedMatrixBuilder:
             return
 
         A = self._build_assoc()
-        data = pickle.dumps(A, protocol=pickle.HIGHEST_PROTOCOL)
-        compressed_data = gzip.compress(data)
+        data = compress_pickle.dumps(A, compression="gzip")
 
-        arcname = f"{self.matrix_count}.assoc.pkl.gz"
+        arcname = f"{self.matrix_count}.assoc.pkl"
         info = tarfile.TarInfo(name=arcname)
-        info.size = len(compressed_data)
-        self.tar.addfile(info, io.BytesIO(compressed_data))
+        info.size = len(data)
+        self.tar.addfile(info, io.BytesIO(data))
 
         # Clean up memory used by the associative array after writing to tar
         del A
         del data
-        del compressed_data
         self.matrix_count += 1
 
     def write_single_file(self) -> None:
@@ -217,7 +214,7 @@ class StringBucketedMatrixBuilder:
         A = self._build_assoc()
         output_path = os.path.join(self.output_dir, self.one_file_name)
         with open(output_path, "wb") as f:
-            pickle.dump(A, f, protocol=pickle.HIGHEST_PROTOCOL)
+            compress_pickle.dump(A, f, compression="gzip")
         del A
         gc.collect()
 

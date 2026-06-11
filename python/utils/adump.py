@@ -1,5 +1,5 @@
 import sys
-import pickle
+import compress_pickle
 
 
 def print_help():
@@ -13,7 +13,7 @@ def print_help():
 
 def load_assoc_from_pkl(filename):
     with open(filename, "rb") as f:
-        return pickle.load(f)
+        return compress_pickle.load(f, compression="gzip")
 
 
 def _to_list_if_possible(value):
