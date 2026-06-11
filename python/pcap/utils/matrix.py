@@ -195,9 +195,9 @@ class StringBucketedMatrixBuilder:
             return
 
         A = self._build_assoc()
-        data = compress_pickle.dumps(A, protocol=compress_pickle.HIGHEST_PROTOCOL, compression="gzip")
+        data = compress_pickle.dumps(A, compression="gzip")
 
-        arcname = f"{self.matrix_count}.assoc.pkl.gz"
+        arcname = f"{self.matrix_count}.assoc.pkl"
         info = tarfile.TarInfo(name=arcname)
         info.size = len(data)
         self.tar.addfile(info, io.BytesIO(data))
@@ -214,7 +214,7 @@ class StringBucketedMatrixBuilder:
         A = self._build_assoc()
         output_path = os.path.join(self.output_dir, self.one_file_name)
         with open(output_path, "wb") as f:
-            compress_pickle.dump(A, f, protocol=compress_pickle.HIGHEST_PROTOCOL, compression="gzip")
+            compress_pickle.dump(A, f, compression="gzip")
         del A
         gc.collect()
 
