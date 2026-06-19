@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+
+# If invoked as "sh scripts/setup.sh", re-run with bash.
+if [ -z "${BASH_VERSION:-}" ]; then
+  exec bash "$0" "$@"
+fi
+
 set -euo pipefail
 
 # Bootstrap local Python environment and dependencies.
