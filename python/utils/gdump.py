@@ -3,6 +3,7 @@ import ipaddress
 import graphblas as gb
 from pathlib import Path
 import tarfile
+import gzip
 from datetime import datetime
 
 def print_help():
@@ -11,7 +12,7 @@ def print_help():
     print("\tpython gdump.py 2 {graphblas .grb or .tar file}")
     print("\tpython gdump.py 3 {graphblas .grb or .tar file}")
     print("\tpython gdump.py 4 {graphblas .grb or .tar file}")
-    print("\tpython gdump.py 7 {graphblas .grb or .tar file} {label map tsv}")
+    print("\tpython gdump.py 7 {graphblas .grb or .tar file} {label map tsv/tsv.gz}")
     print("Examples:")
     print("\tpython gdump.py 2 0.grb")
     print("\tpython gdump.py 2 matrices.tar")
@@ -19,8 +20,8 @@ def print_help():
     print("\tpython gdump.py 3 layer3_bin_buckets.tar")
     print("\tpython gdump.py 4 0.grb")
     print("\tpython gdump.py 4 layer4_bin_buckets.tar")
-    print("\tpython gdump.py 7 0.grb layer7_labels.tsv")
-    print("\tpython gdump.py 7 matrices.tar layer7_labels.tsv")
+    print("\tpython gdump.py 7 0.grb layer7_labels.tsv.gz")
+    print("\tpython gdump.py 7 matrices.tar layer7_labels.tsv.gz")
 
 
 def truncate(text, max_len=80):
@@ -155,7 +156,9 @@ def load_label_map(label_map_file):
     """
     label_map = {}
 
-    with open(label_map_file, "r", encoding="utf-8") as f:
+    opener = gzip.open if str(label_map_file).endswith(".gz") else open
+
+    with opener(label_map_file, "rt", encoding="utf-8") as f:
         next(f, None)  # skip header
         for line in f:
             line = line.rstrip("\n")

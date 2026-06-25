@@ -143,7 +143,7 @@ python3 pcap/layer7_matrix.py \
 python3 pcap/layer7_matrixpy \
   -i ../tests/http.cap \
   -o ../tests/test_outs/layer7/one_file \
-  -m layer7_labels.tsv \
+  -m layer7_labels.tsv.gz \
   -b \
   -O
 ```
@@ -152,7 +152,7 @@ python3 pcap/layer7_matrixpy \
 python3 pcap/layer7_matrix.py \
   -i ../tests/http.cap \
   -o ../tests/test_outs/layer7 \
-  -m layer7_labels.tsv \
+  -m layer7_labels.tsv.gz \
   -b \
   -w 1
 ```
@@ -172,9 +172,9 @@ python3 gdump.py #layer #.grb
 or
 ```
 cd python/utils
-python3 gdump.py #layer #.grb file_name.tsv
+python3 gdump.py #layer #.grb file_name.tsv.gz
 ```
-Where #layer is the layer you are decoding, # is the number in front of the grb file you are decoding, and file_name is the tsv file name associated with either a layer file that has strings associated with it
+Where #layer is the layer you are decoding, # is the number in front of the grb file you are decoding, and file_name is the tsv/tsv.gz file name associated with either a layer file that has strings associated with it
 
 To run validation on D4M/String
 ```

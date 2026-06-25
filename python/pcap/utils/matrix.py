@@ -1,5 +1,6 @@
 import os
 import io
+import gzip
 import tarfile
 import numpy as np
 from graphblas import Matrix, binary
@@ -100,7 +101,7 @@ class BucketedMatrixBuilder:
     def add_text_file_to_tar(self, arcname: str, text: str) -> None:
         if self.tar is None:
             return
-        data = text.encode("utf-8")
+        data = gzip.compress(text.encode("utf-8"))
         info = tarfile.TarInfo(name=arcname)
         info.size = len(data)
         self.tar.addfile(info, io.BytesIO(data))
@@ -113,7 +114,7 @@ class BucketedMatrixBuilder:
                 self.write_bucket_to_tar()
 
             if label_tsv_text is not None:
-                self.add_text_file_to_tar("layer7_labels.tsv", label_tsv_text)
+                self.add_text_file_to_tar("layer7_labels.tsv.gz", label_tsv_text)
 
             self.tar.close()
 
@@ -221,7 +222,7 @@ class StringBucketedMatrixBuilder:
     def add_text_file_to_tar(self, arcname: str, text: str) -> None:
         if self.tar is None:
             return
-        data = text.encode("utf-8")
+        data = gzip.compress(text.encode("utf-8"))
         info = tarfile.TarInfo(name=arcname)
         info.size = len(data)
         self.tar.addfile(info, io.BytesIO(data))
@@ -234,6 +235,6 @@ class StringBucketedMatrixBuilder:
                 self.write_bucket_to_tar()
 
             if label_tsv_text is not None:
-                self.add_text_file_to_tar("layer7_labels.tsv", label_tsv_text)
+                self.add_text_file_to_tar("layer7_labels.tsv.gz", label_tsv_text)
 
             self.tar.close()

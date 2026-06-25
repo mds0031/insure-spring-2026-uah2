@@ -1,7 +1,7 @@
 import dpkt
 import os
 from time import perf_counter_ns
-
+import gzip
 import utils.conversion as conv
 from utils.matrix import BucketedMatrixBuilder
 from utils.benchmark import Layer7BenchmarkResult
@@ -36,9 +36,12 @@ def write_label_map(label_map: dict, path: str) -> None:
     """
     Writes label_id -> label mapping to a TSV file.
 
+    If the output path ends with .gz, write gzip-compressed TSV.
+
     This allows reconstruction of string labels from numeric matrix indices.
     """
-    with open(path, "w", encoding="utf-8") as f:
+    opener = gzip.open if path.endswith(".gz") else open
+    with opener(path, "wt", encoding="utf-8") as f:
         f.write("label_id\tlabel\n")
         for label, label_id in sorted(label_map.items(), key=lambda x: x[1]):
             f.write(f"{label_id}\t{label}\n")

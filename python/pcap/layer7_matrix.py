@@ -103,8 +103,8 @@ def main() -> None:
     parser.add_argument("-o", "--output", required=True, help="Output folder for bucketed matrix files")
     parser.add_argument(
         "-m", "--map",
-        default="layer7_labels.tsv",
-        help="Binary-mode label map TSV file (default: layer7_labels.tsv)"
+        default="layer7_labels.tsv.gz",
+        help="Binary-mode label map TSV(.gz) file (default: layer7_labels.tsv.gz)"
     )
 
     #Optional arguments for performance and flexibility
