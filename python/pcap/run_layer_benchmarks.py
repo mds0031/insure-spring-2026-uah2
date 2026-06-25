@@ -2,7 +2,7 @@
 Script to run layer2/layer3/layer4/layer7 matrix scripts with benchmarking enabled.
 This script will run the specified layer scripts with the --benchmark flag, which enables benchmarking and saves results to JSON files. It can run both string and binary modes for comparison when benchmarking is enabled.
 Usage:
-    python run_layer_benchmarks.py -i input.pcap -o output_dir --window 131072 --one-file --map layer7_labels.tsv --layers 2,3,4,7
+    python run_layer_benchmarks.py -i input.pcap -o output_dir --window 131072 --one-file --map layer7_labels.tsv.gz --layers 2,3,4,7
 """
 import argparse
 import os
@@ -126,8 +126,8 @@ def main() -> None:
     parser.add_argument(
         "-m",
         "--map",
-        default="layer7_labels.tsv",
-        help="Label map filename passed to layer7 binary benchmark path",
+        default="layer7_labels.tsv.gz",
+        help="Label map filename passed to layer7 binary benchmark path (.tsv or .tsv.gz)",
     )
     parser.add_argument(
         "--layers",
